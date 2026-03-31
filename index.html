@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Restaurant</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100">
+
+  <!-- Header -->
+  <header class="bg-white shadow p-4 flex justify-between items-center">
+    <h1 class="text-xl font-bold">🍽️ Nusantara Dinner</h1>
+
+    <div class="space-x-2">
+      <button id="openModal" class="bg-blue-500 text-white px-4 py-2 rounded">
+        Create Order
+      </button>
+      <button id="openCheckModal" class="bg-gray-500 text-white px-4 py-2 rounded">
+        Check Order
+      </button>
+    </div>
+  </header>
+
+  <!-- Search + Filter -->
+  <section class="p-4 bg-white shadow mt-4 mx-4 rounded">
+    <div class="flex flex-col md:flex-row gap-3">
+
+      <!-- Search -->
+        <input 
+        id="searchInput"
+        type="text" 
+        placeholder="Search menu..." 
+        class="flex-1 border rounded px-3 py-2"
+        />
+
+      <!-- Filter -->
+      <select id="categoryFilter" class="border rounded px-3 py-2">
+        <option value="all">All Categories</option>
+        <option value="food">Food</option>
+        <option value="drink">Drinks</option>
+        <option value="dessert">Dessert</option>
+      </select>
+
+    </div>
+  </section>
+
+<!-- Menu List -->
+<section id="menuContainer" class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+
+  <!-- Item 1 -->
+  <div class="bg-white rounded shadow overflow-hidden">
+    <img src="assets/images/fried-rice.jpg" class="w-full h-40 object-cover">
+    <div class="p-4">
+      <h2 class="font-bold text-lg">Fried Rice</h2>
+      <p class="text-gray-500">Delicious Indonesian fried rice</p>
+      <p class="text-blue-600 font-semibold mt-2">Rp 25.000</p>
+    </div>
+  </div>
+
+  <!-- Item 2 -->
+  <div class="bg-white rounded shadow overflow-hidden">
+    <img src="assets/images/satay.jpg" class="w-full h-40 object-cover">
+    <div class="p-4">
+      <h2 class="font-bold text-lg">Chicken Satay</h2>
+      <p class="text-gray-500">Grilled chicken with peanut sauce</p>
+      <p class="text-blue-600 font-semibold mt-2">Rp 30.000</p>
+    </div>
+  </div>
+
+  <!-- Item 3 -->
+  <div class="bg-white rounded shadow overflow-hidden">
+    <img src="assets/images/iced-tea.jpg" class="w-full h-40 object-cover">
+    <div class="p-4">
+      <h2 class="font-bold text-lg">Iced Tea</h2>
+      <p class="text-gray-500">Refreshing cold tea</p>
+      <p class="text-blue-600 font-semibold mt-2">Rp 10.000</p>
+    </div>
+  </div>
+
+  <!-- Item 4 -->
+  <div class="bg-white rounded shadow overflow-hidden">
+    <img src="assets/images/cake.jpg" class="w-full h-40 object-cover">
+    <div class="p-4">
+      <h2 class="font-bold text-lg">Chocolate Cake</h2>
+      <p class="text-gray-500">Rich chocolate dessert</p>
+      <p class="text-blue-600 font-semibold mt-2">Rp 20.000</p>
+    </div>
+  </div>
+
+</section>
+
+<!-- ORDER MODAL -->
+<div id="orderModal" class="fixed inset-0 bg-black bg-opacity-50 hidden justify-center items-center">
+
+  <div class="bg-white w-full max-w-2xl rounded shadow p-6">
+
+    <!-- Title -->
+    <h2 class="text-xl font-bold mb-4">Create Order</h2>
+
+    <!-- Table Selection -->
+    <div class="mb-4">
+      <label class="block mb-1 font-semibold">Table Number</label>
+      <select id="tableNumber" class="w-full border rounded px-3 py-2">
+        <option value="">Select Table</option>
+        <option>Table 1</option>
+        <option>Table 2</option>
+        <option>Table 3</option>
+      </select>
+    </div>
+
+    <!-- Menu Selection -->
+    <div id="orderItems" class="mb-4 max-h-60 overflow-y-auto border rounded p-2"></div>
+
+
+    <!-- Total -->
+    <div class="mb-4 font-bold">
+    Total: Rp <span id="totalPrice">0</span>
+    </div>
+
+    <!-- Buttons -->
+    <div class="flex justify-end gap-2">
+      <button id="closeModal" class="px-4 py-2 bg-gray-400 text-white rounded">
+        Cancel
+      </button>
+      <button id="submitOrder" class="px-4 py-2 bg-blue-500 text-white rounded">
+        Submit Order
+      </button>
+    </div>
+
+  </div>
+</div>
+<!-- CHECK ORDER MODAL -->
+<div id="checkModal" class="fixed inset-0 bg-black bg-opacity-50 hidden justify-center items-center">
+
+  <div class="bg-white w-full max-w-lg rounded shadow p-6">
+
+    <h2 class="text-xl font-bold mb-4">Check Order</h2>
+
+    <!-- Input -->
+    <div class="flex mb-4">
+    <span class="bg-gray-200 px-3 py-2 border border-r-0 rounded-l">
+        ORD-
+    </span>
+    <input 
+        id="orderIdInput"
+        type="text"
+        placeholder="123456"
+        class="w-full border rounded-r px-3 py-2"
+    />
+    </div>
+
+    <!-- Buttons -->
+    <div class="flex justify-end gap-2 mb-4">
+      <button id="closeCheckModal" class="px-4 py-2 bg-gray-400 text-white rounded">
+        Cancel
+      </button>
+      <button id="checkOrderBtn" class="px-4 py-2 bg-blue-500 text-white rounded">
+        Check
+      </button>
+    </div>
+
+    <!-- Result -->
+    <div id="orderResult" class="border-t pt-4 text-sm"></div>
+
+  </div>
+</div>
+<!-- SUCCESS MODAL -->
+<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden justify-center items-center">
+
+  <div class="bg-white w-full max-w-md rounded shadow p-6 text-center">
+
+    <h2 class="text-xl font-bold mb-4">Order Successful 🎉</h2>
+
+    <p class="mb-2">Your Order ID:</p>
+
+    <!-- Order ID + Copy -->
+    <div class="flex items-center justify-center gap-2 mb-4">
+      <span id="generatedOrderId" class="font-bold text-lg">ORD-XXXXXX</span>
+      <button id="copyOrderId" class="bg-gray-200 px-3 py-1 rounded">
+        Copy
+      </button>
+    </div>
+
+    <p class="text-sm text-gray-500 mb-4">
+      Please save this ID to check your order status.
+    </p>
+
+    <button id="closeSuccessModal" class="bg-blue-500 text-white px-4 py-2 rounded">
+      OK
+    </button>
+
+  </div>
+</div>
+<script src="js/menu.js"></script>
+<script src="js/order.js"></script>
+<script src="js/checkOrder.js"></script>
+<script>
+  const modal = document.getElementById("orderModal");
+  const openBtn = document.getElementById("openModal");
+  const closeBtn = document.getElementById("closeModal");
+
+  openBtn.addEventListener("click", () => {
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+  });
+
+  closeBtn.addEventListener("click", () => {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  });
+
+  // Close when clicking outside
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) {
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+  });
+</script>
+</body>
+</html>
