@@ -84,7 +84,16 @@ orderItemsContainer.addEventListener("change", (e) => {
 
 // Run when modal opens
 document.getElementById("openModal").addEventListener("click", () => {
+  // Reset table selection
+  document.getElementById("tableNumber").value = "";
+
+  // Reset state
+  orderState = {};
+
+  // Re-render fresh menu
   renderOrderItems();
+
+  // Reset total
   updateTotal();
 });
 
@@ -126,8 +135,14 @@ document.getElementById("submitOrder").addEventListener("click", () => {
     createdAt: new Date().toISOString()
   };
 
-  // Save to localStorage
-  localStorage.setItem(orderId, JSON.stringify(orderData));
+  // Save to NeonDB
+  fetch("http://localhost:3000/orders", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify(orderData)
+});
 
   // Show Order ID
   // Show success modal
