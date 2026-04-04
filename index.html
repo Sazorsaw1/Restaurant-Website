@@ -4,222 +4,174 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>E-Restaurant</title>
-
-  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
+<body class="min-h-screen bg-amber-50 text-slate-900">
+  <header class="sticky top-0 z-20 border-b border-amber-200 bg-white/90 backdrop-blur">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-orange-600">Digital Dining</p>
+        <h1 class="text-2xl font-bold text-slate-900">E-Restaurant</h1>
+      </div>
 
-<body class="bg-gray-100">
-
-  <!-- Header -->
-  <header class="bg-white shadow p-4 flex justify-between items-center">
-    <h1 class="text-xl font-bold">🍽️ Nusantara Dinner</h1>
-
-    <div class="space-x-2">
-      <button id="openModal" class="bg-blue-500 text-white px-4 py-2 rounded">
-        Create Order
-      </button>
-      <button id="openCheckModal" class="bg-gray-500 text-white px-4 py-2 rounded">
-        Check Order
-      </button>
+      <div class="flex gap-3">
+        <button
+          id="openCheckModal"
+          class="rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+        >
+          Check Order
+        </button>
+        <button
+          id="openModal"
+          class="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white shadow-sm transition hover:bg-orange-600"
+        >
+          Create Order
+        </button>
+      </div>
     </div>
   </header>
 
-  <!-- Search + Filter -->
-  <section class="p-4 bg-white shadow mt-4 mx-4 rounded">
-    <div class="flex flex-col md:flex-row gap-3">
+  <main class="mx-auto max-w-6xl px-6 py-8">
+    <section class="mb-8 overflow-hidden rounded-3xl bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-400 px-6 py-8 text-white shadow-lg">
+      <p class="mb-2 text-sm font-semibold uppercase tracking-[0.25em] text-orange-100">Fast Table Ordering</p>
+      <h2 class="max-w-2xl text-3xl font-bold leading-tight">Browse the menu, send the order, and track the status with a single order ID.</h2>
+      <p class="mt-3 max-w-2xl text-sm text-orange-50">
+        This menu is wired to the backend order API so customers can place orders and check progress without waiting for staff.
+      </p>
+    </section>
 
-      <!-- Search -->
-        <input 
-        id="searchInput"
-        type="text" 
-        placeholder="Search menu..." 
-        class="flex-1 border rounded px-3 py-2"
-        />
+    <section class="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-amber-100">
+      <div class="flex flex-col gap-3 md:flex-row">
+        <input
+          id="searchInput"
+          type="text"
+          placeholder="Search menu..."
+          class="flex-1 rounded-lg border border-slate-300 px-4 py-3 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200"
+        >
+        <select
+          id="categoryFilter"
+          class="rounded-lg border border-slate-300 px-4 py-3 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200"
+        >
+          <option value="">All Categories</option>
+          <option value="food">Food</option>
+          <option value="drink">Drink</option>
+          <option value="dessert">Dessert</option>
+        </select>
+      </div>
+    </section>
 
-      <!-- Filter -->
-      <select id="categoryFilter" class="border rounded px-3 py-2">
-        <option value="all">All Categories</option>
-        <option value="food">Food</option>
-        <option value="drink">Drinks</option>
-        <option value="dessert">Dessert</option>
-      </select>
+    <section>
+      <div id="menuContainer" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
+    </section>
+  </main>
 
-    </div>
-  </section>
+  <div id="orderModal" class="fixed inset-0 z-30 hidden items-center justify-center bg-slate-950/50 px-4 py-6">
+    <div class="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
+      <div class="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-bold text-slate-900">Create Order</h2>
+          <p class="text-sm text-slate-500">Choose a table, select menu items, and send the order to the kitchen.</p>
+        </div>
+        <button id="closeModal" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-700">
+          Close
+        </button>
+      </div>
 
-<!-- Menu List -->
-<section id="menuContainer" class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="mb-4">
+        <label for="tableNumber" class="mb-2 block text-sm font-semibold text-slate-700">Table Number</label>
+        <select id="tableNumber" class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
+          <option value="">Select Table</option>
+          <option value="Table 1">Table 1</option>
+          <option value="Table 2">Table 2</option>
+          <option value="Table 3">Table 3</option>
+        </select>
+      </div>
 
-  <!-- Item 1 -->
-  <div class="bg-white rounded shadow overflow-hidden">
-    <img src="assets/images/fried-rice.jpg" class="w-full h-40 object-cover">
-    <div class="p-4">
-      <h2 class="font-bold text-lg">Fried Rice</h2>
-      <p class="text-gray-500">Delicious Indonesian fried rice</p>
-      <p class="text-blue-600 font-semibold mt-2">Rp 25.000</p>
+      <div class="mb-4">
+        <div class="mb-2 flex items-center justify-between">
+          <p class="text-sm font-semibold text-slate-700">Menu Selection</p>
+          <p class="text-xs text-slate-400">Adjust quantity before submitting</p>
+        </div>
+        <div id="orderItems" class="max-h-72 space-y-3 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3"></div>
+      </div>
+
+      <div class="mb-5 flex items-center justify-between rounded-xl bg-amber-50 px-4 py-3">
+        <span class="font-semibold text-slate-700">Total</span>
+        <span class="text-lg font-bold text-orange-600">Rp <span id="totalPrice">0</span></span>
+      </div>
+
+      <div class="flex justify-end gap-3">
+        <button id="cancelOrder" class="rounded-lg border border-slate-300 px-4 py-2 font-medium text-slate-700 transition hover:bg-slate-50">
+          Cancel
+        </button>
+        <button id="submitOrder" class="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-600">
+          Submit Order
+        </button>
+      </div>
     </div>
   </div>
 
-  <!-- Item 2 -->
-  <div class="bg-white rounded shadow overflow-hidden">
-    <img src="assets/images/satay.jpg" class="w-full h-40 object-cover">
-    <div class="p-4">
-      <h2 class="font-bold text-lg">Chicken Satay</h2>
-      <p class="text-gray-500">Grilled chicken with peanut sauce</p>
-      <p class="text-blue-600 font-semibold mt-2">Rp 30.000</p>
+  <div id="checkModal" class="fixed inset-0 z-30 hidden items-center justify-center bg-slate-950/50 px-4 py-6">
+    <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+      <div class="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-bold text-slate-900">Check Order</h2>
+          <p class="text-sm text-slate-500">Enter the numeric part of the order ID to see the latest status.</p>
+        </div>
+        <button id="closeCheckModal" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-700">
+          Close
+        </button>
+      </div>
+
+      <label for="orderIdInput" class="mb-2 block text-sm font-semibold text-slate-700">Order ID</label>
+      <div class="mb-4 flex">
+        <span class="rounded-l-lg border border-r-0 border-slate-300 bg-slate-100 px-4 py-3 font-semibold text-slate-500">
+          ORD-
+        </span>
+        <input
+          id="orderIdInput"
+          type="text"
+          inputmode="numeric"
+          placeholder="123456"
+          class="w-full rounded-r-lg border border-slate-300 px-4 py-3 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200"
+        >
+      </div>
+
+      <div class="mb-4 flex justify-end gap-3">
+        <button id="cancelCheckOrder" class="rounded-lg border border-slate-300 px-4 py-2 font-medium text-slate-700 transition hover:bg-slate-50">
+          Cancel
+        </button>
+        <button id="checkOrderBtn" class="rounded-lg bg-slate-800 px-4 py-2 font-medium text-white transition hover:bg-slate-900">
+          Check
+        </button>
+      </div>
+
+      <div id="orderResult" class="min-h-12 border-t border-slate-200 pt-4 text-sm"></div>
     </div>
   </div>
 
-  <!-- Item 3 -->
-  <div class="bg-white rounded shadow overflow-hidden">
-    <img src="assets/images/iced-tea.jpg" class="w-full h-40 object-cover">
-    <div class="p-4">
-      <h2 class="font-bold text-lg">Iced Tea</h2>
-      <p class="text-gray-500">Refreshing cold tea</p>
-      <p class="text-blue-600 font-semibold mt-2">Rp 10.000</p>
-    </div>
-  </div>
+  <div id="successModal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-950/50 px-4 py-6">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-2xl">
+      <p class="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-green-600">Order Sent</p>
+      <h2 class="mb-3 text-2xl font-bold text-slate-900">Order Successful</h2>
+      <p class="mb-4 text-sm text-slate-500">Keep this order number so you can track the kitchen status later.</p>
 
-  <!-- Item 4 -->
-  <div class="bg-white rounded shadow overflow-hidden">
-    <img src="assets/images/cake.jpg" class="w-full h-40 object-cover">
-    <div class="p-4">
-      <h2 class="font-bold text-lg">Chocolate Cake</h2>
-      <p class="text-gray-500">Rich chocolate dessert</p>
-      <p class="text-blue-600 font-semibold mt-2">Rp 20.000</p>
-    </div>
-  </div>
+      <div class="mb-4 flex items-center justify-center gap-2">
+        <span id="generatedOrderId" class="rounded-lg bg-slate-100 px-4 py-2 text-lg font-bold text-slate-900">ORD-XXXXXX</span>
+        <button id="copyOrderId" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+          Copy
+        </button>
+      </div>
 
-</section>
-
-<!-- ORDER MODAL -->
-<div id="orderModal" class="fixed inset-0 bg-black bg-opacity-50 hidden justify-center items-center">
-
-  <div class="bg-white w-full max-w-2xl rounded shadow p-6">
-
-    <!-- Title -->
-    <h2 class="text-xl font-bold mb-4">Create Order</h2>
-
-    <!-- Table Selection -->
-    <div class="mb-4">
-      <label class="block mb-1 font-semibold">Table Number</label>
-      <select id="tableNumber" class="w-full border rounded px-3 py-2">
-        <option value="">Select Table</option>
-        <option>Table 1</option>
-        <option>Table 2</option>
-        <option>Table 3</option>
-      </select>
-    </div>
-
-    <!-- Menu Selection -->
-    <div id="orderItems" class="mb-4 max-h-60 overflow-y-auto border rounded p-2"></div>
-
-
-    <!-- Total -->
-    <div class="mb-4 font-bold">
-    Total: Rp <span id="totalPrice">0</span>
-    </div>
-
-    <!-- Buttons -->
-    <div class="flex justify-end gap-2">
-      <button id="closeModal" class="px-4 py-2 bg-gray-400 text-white rounded">
-        Cancel
-      </button>
-      <button id="submitOrder" class="px-4 py-2 bg-blue-500 text-white rounded">
-        Submit Order
-      </button>
-    </div>
-
-  </div>
-</div>
-<!-- CHECK ORDER MODAL -->
-<div id="checkModal" class="fixed inset-0 bg-black bg-opacity-50 hidden justify-center items-center">
-
-  <div class="bg-white w-full max-w-lg rounded shadow p-6">
-
-    <h2 class="text-xl font-bold mb-4">Check Order</h2>
-
-    <!-- Input -->
-    <div class="flex mb-4">
-    <span class="bg-gray-200 px-3 py-2 border border-r-0 rounded-l">
-        ORD-
-    </span>
-    <input 
-        id="orderIdInput"
-        type="text"
-        placeholder="123456"
-        class="w-full border rounded-r px-3 py-2"
-    />
-    </div>
-
-    <!-- Buttons -->
-    <div class="flex justify-end gap-2 mb-4">
-      <button id="closeCheckModal" class="px-4 py-2 bg-gray-400 text-white rounded">
-        Cancel
-      </button>
-      <button id="checkOrderBtn" class="px-4 py-2 bg-blue-500 text-white rounded">
-        Check
-      </button>
-    </div>
-
-    <!-- Result -->
-    <div id="orderResult" class="border-t pt-4 text-sm"></div>
-
-  </div>
-</div>
-<!-- SUCCESS MODAL -->
-<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden justify-center items-center">
-
-  <div class="bg-white w-full max-w-md rounded shadow p-6 text-center">
-
-    <h2 class="text-xl font-bold mb-4">Order Successful 🎉</h2>
-
-    <p class="mb-2">Your Order ID:</p>
-
-    <!-- Order ID + Copy -->
-    <div class="flex items-center justify-center gap-2 mb-4">
-      <span id="generatedOrderId" class="font-bold text-lg">ORD-XXXXXX</span>
-      <button id="copyOrderId" class="bg-gray-200 px-3 py-1 rounded">
-        Copy
+      <button id="closeSuccessModal" class="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-600">
+        OK
       </button>
     </div>
-
-    <p class="text-sm text-gray-500 mb-4">
-      Please save this ID to check your order status.
-    </p>
-
-    <button id="closeSuccessModal" class="bg-blue-500 text-white px-4 py-2 rounded">
-      OK
-    </button>
-
   </div>
-</div>
-<script src="js/menu.js"></script>
-<script src="js/order.js"></script>
-<script src="js/checkOrder.js"></script>
-<script>
-  const modal = document.getElementById("orderModal");
-  const openBtn = document.getElementById("openModal");
-  const closeBtn = document.getElementById("closeModal");
 
-  openBtn.addEventListener("click", () => {
-    modal.classList.remove("hidden");
-    modal.classList.add("flex");
-  });
-
-  closeBtn.addEventListener("click", () => {
-    modal.classList.add("hidden");
-    modal.classList.remove("flex");
-  });
-
-  // Close when clicking outside
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal) {
-      modal.classList.add("hidden");
-      modal.classList.remove("flex");
-    }
-  });
-</script>
+  <script src="JS/app.js"></script>
+  <script src="JS/menu.js"></script>
+  <script src="JS/order.js"></script>
+  <script src="JS/CheckOrder.js"></script>
 </body>
 </html>

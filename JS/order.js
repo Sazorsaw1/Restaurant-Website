@@ -1,71 +1,107 @@
-// Get elements
+const orderModal = document.getElementById("orderModal");
+const successModal = document.getElementById("successModal");
 const orderItemsContainer = document.getElementById("orderItems");
 const totalPriceEl = document.getElementById("totalPrice");
+const tableNumberSelect = document.getElementById("tableNumber");
+const submitOrderButton = document.getElementById("submitOrder");
+const generatedOrderIdEl = document.getElementById("generatedOrderId");
+const copyBtn = document.getElementById("copyOrderId");
 
-// Store selected items
 let orderState = {};
 
-// Render menu into modal
-function renderOrderItems() {
-  orderItemsContainer.innerHTML = "";
+function getQuantityElementId(name) {
+  return `qty-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+}
 
-  menu.forEach(item => {
-    orderState[item.name] = {
+function createInitialOrderState() {
+  return menu.reduce((state, item) => {
+    state[item.name] = {
       ...item,
       quantity: 1,
-      selected: false
+      selected: false,
     };
 
-    const row = document.createElement("div");
-    row.className = "flex items-center justify-between mb-2";
+    return state;
+  }, {});
+}
 
-    row.innerHTML = `
-    <label class="flex-1 truncate">
-        <input type="checkbox" data-name="${item.name}">
-        ${item.name}
-    </label>
+function renderOrderItems() {
+  orderItemsContainer.innerHTML = menu.map((item) => `
+    <div class="flex items-center justify-between gap-4 rounded-xl bg-white p-3 shadow-sm">
+      <label class="flex min-w-0 flex-1 items-center gap-3">
+        <input type="checkbox" data-name="${item.name}" class="h-4 w-4 rounded border-slate-300 text-orange-500 focus:ring-orange-400">
+        <div class="min-w-0">
+          <p class="truncate font-medium text-slate-800">${item.name}</p>
+          <p class="text-sm text-slate-500">${formatCurrency(item.price)}</p>
+        </div>
+      </label>
 
       <div class="flex items-center gap-2">
-        <button data-action="minus" data-name="${item.name}" class="px-2 bg-gray-200">-</button>
-        <span id="qty-${item.name}">1</span>
-        <button data-action="plus" data-name="${item.name}" class="px-2 bg-gray-200">+</button>
+        <button type="button" data-action="minus" data-name="${item.name}" class="rounded-md bg-slate-200 px-3 py-1 font-semibold text-slate-700 transition hover:bg-slate-300">-</button>
+        <span id="${getQuantityElementId(item.name)}" class="w-6 text-center font-semibold text-slate-800">1</span>
+        <button type="button" data-action="plus" data-name="${item.name}" class="rounded-md bg-slate-200 px-3 py-1 font-semibold text-slate-700 transition hover:bg-slate-300">+</button>
       </div>
-    `;
-
-    orderItemsContainer.appendChild(row);
-  });
+    </div>
+  `).join("");
 }
 
-// Update total
 function updateTotal() {
-  let total = 0;
-
-  Object.values(orderState).forEach(item => {
-    if (item.selected) {
-      total += item.price * item.quantity;
+  const total = Object.values(orderState).reduce((sum, item) => {
+    if (!item.selected) {
+      return sum;
     }
-  });
 
-  totalPriceEl.textContent = total.toLocaleString();
+    return sum + (item.price * item.quantity);
+  }, 0);
+
+  totalPriceEl.textContent = Number(total).toLocaleString("id-ID");
 }
 
-// Handle clicks
-orderItemsContainer.addEventListener("click", (e) => {
-  const name = e.target.dataset.name;
-  const action = e.target.dataset.action;
+function resetOrderForm() {
+  tableNumberSelect.value = "";
+  orderState = createInitialOrderState();
+  renderOrderItems();
+  updateTotal();
+}
 
-  if (!name) return;
+function openOrderModal() {
+  resetOrderForm();
+  toggleModal(orderModal, true);
+}
+
+function closeOrderModal() {
+  toggleModal(orderModal, false);
+}
+
+function openSuccessModal(orderId) {
+  generatedOrderIdEl.textContent = orderId;
+  toggleModal(successModal, true);
+}
+
+function closeSuccessModal() {
+  toggleModal(successModal, false);
+}
+
+function generateOrderId() {
+  return `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
+}
+
+orderItemsContainer.addEventListener("click", (event) => {
+  const { name, action } = event.target.dataset;
+
+  if (!name || !action || !orderState[name]) {
+    return;
+  }
 
   if (action === "plus") {
-    orderState[name].quantity++;
+    orderState[name].quantity += 1;
   }
 
   if (action === "minus" && orderState[name].quantity > 1) {
-    orderState[name].quantity--;
+    orderState[name].quantity -= 1;
   }
 
-  // Update UI
-  const qtyEl = document.getElementById(`qty-${name}`);
+  const qtyEl = document.getElementById(getQuantityElementId(name));
   if (qtyEl) {
     qtyEl.textContent = orderState[name].quantity;
   }
@@ -73,111 +109,110 @@ orderItemsContainer.addEventListener("click", (e) => {
   updateTotal();
 });
 
-// Handle checkbox
-orderItemsContainer.addEventListener("change", (e) => {
-  if (e.target.type === "checkbox") {
-    const name = e.target.dataset.name;
-    orderState[name].selected = e.target.checked;
-    updateTotal();
-  }
-});
-
-// Run when modal opens
-document.getElementById("openModal").addEventListener("click", () => {
-  // Reset table selection
-  document.getElementById("tableNumber").value = "";
-
-  // Reset state
-  orderState = {};
-
-  // Re-render fresh menu
-  renderOrderItems();
-
-  // Reset total
-  updateTotal();
-});
-
-// Generate Order ID
-function generateOrderId() {
-  return "ORD-" + Math.floor(100000 + Math.random() * 900000);
-}
-
-// Submit order
-document.getElementById("submitOrder").addEventListener("click", () => {
-  const tableNumber = document.getElementById("tableNumber").value;
-
-  // Validation
-  if (!tableNumber) {
-    alert("Please select a table number");
+orderItemsContainer.addEventListener("change", (event) => {
+  if (event.target.type !== "checkbox") {
     return;
   }
 
-  const selectedItems = Object.values(orderState).filter(item => item.selected);
+  const { name } = event.target.dataset;
+  if (!name || !orderState[name]) {
+    return;
+  }
+
+  orderState[name].selected = event.target.checked;
+  updateTotal();
+});
+
+document.getElementById("openModal").addEventListener("click", openOrderModal);
+document.getElementById("closeModal").addEventListener("click", closeOrderModal);
+document.getElementById("cancelOrder").addEventListener("click", closeOrderModal);
+document.getElementById("closeSuccessModal").addEventListener("click", closeSuccessModal);
+
+orderModal.addEventListener("click", (event) => {
+  if (event.target === orderModal) {
+    closeOrderModal();
+  }
+});
+
+successModal.addEventListener("click", (event) => {
+  if (event.target === successModal) {
+    closeSuccessModal();
+  }
+});
+
+submitOrderButton.addEventListener("click", async () => {
+  const tableNumber = tableNumberSelect.value;
+
+  if (!tableNumber) {
+    alert("Please select a table number.");
+    return;
+  }
+
+  const selectedItems = Object.values(orderState).filter((item) => item.selected);
 
   if (selectedItems.length === 0) {
-    alert("Please select at least one menu item");
+    alert("Please select at least one menu item.");
     return;
   }
 
   const orderId = generateOrderId();
-
+  const totalPrice = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const orderData = {
     orderId,
     tableNumber,
-    items: selectedItems.map(item => ({
+    items: selectedItems.map((item) => ({
       name: item.name,
       price: item.price,
       quantity: item.quantity,
-      total: item.price * item.quantity
+      total: item.price * item.quantity,
     })),
-    totalPrice: selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    totalPrice,
     status: "Pending",
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
   };
 
-  // Save to NeonDB
-  fetch("http://localhost:3000/orders", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify(orderData)
+  submitOrderButton.disabled = true;
+  submitOrderButton.textContent = "Submitting...";
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/orders`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(orderData),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to create order.");
+    }
+
+    closeOrderModal();
+    openSuccessModal(orderId);
+  } catch (error) {
+    console.error(error);
+    alert("The order could not be submitted. Please make sure the backend server is running and try again.");
+  } finally {
+    submitOrderButton.disabled = false;
+    submitOrderButton.textContent = "Submit Order";
+  }
 });
 
-  // Show Order ID
-  // Show success modal
-    const successModal = document.getElementById("successModal");
-    const generatedOrderIdEl = document.getElementById("generatedOrderId");
+copyBtn.addEventListener("click", async () => {
+  const cleanId = generatedOrderIdEl.textContent.replace("ORD-", "");
 
-    generatedOrderIdEl.textContent = orderId;
-
-    successModal.classList.remove("hidden");
-    successModal.classList.add("flex");
-
-  // Reset modal
-  document.getElementById("orderModal").classList.add("hidden");
-  document.getElementById("orderModal").classList.remove("flex");
+  try {
+    await navigator.clipboard.writeText(cleanId);
+    copyBtn.textContent = "Copied!";
+    setTimeout(() => {
+      copyBtn.textContent = "Copy";
+    }, 1500);
+  } catch (error) {
+    console.error(error);
+    alert("Copy failed. Please copy the order ID manually.");
+  }
 });
-const copyBtn = document.getElementById("copyOrderId");
 
-copyBtn.addEventListener("click", () => {
-const fullId = document.getElementById("generatedOrderId").textContent;
-
-// Remove "ORD-" prefix
-const cleanId = fullId.replace("ORD-", "");
-
-navigator.clipboard.writeText(cleanId);
-
-  copyBtn.textContent = "Copied!";
-  setTimeout(() => {
-    copyBtn.textContent = "Copy";
-  }, 1500);
-});
-const closeSuccessModal = document.getElementById("closeSuccessModal");
-
-closeSuccessModal.addEventListener("click", () => {
-  successModal.classList.add("hidden");
-  successModal.classList.remove("flex");
-});
-document.getElementById("orderModal").classList.add("hidden");
-document.getElementById("orderModal").classList.remove("flex");
+resetOrderForm();
+closeOrderModal();
+closeSuccessModal();
