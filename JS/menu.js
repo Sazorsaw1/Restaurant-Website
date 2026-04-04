@@ -1,33 +1,50 @@
-const menu = [
+const LOCAL_MENU_FALLBACK = [
   {
     name: "Fried Rice",
     price: 25000,
     category: "food",
-    image: "Assets/images/Fried-Rice.jpg"
+    image: "Assets/images/Fried-Rice.jpg",
   },
   {
     name: "Chicken Satay",
     price: 30000,
     category: "food",
-    image: "Assets/images/Satay.jpg"
+    image: "Assets/images/Satay.jpg",
   },
   {
     name: "Iced Tea",
     price: 10000,
     category: "drink",
-    image: "Assets/images/Iced-Tea.jpg"
+    image: "Assets/images/Iced-Tea.jpg",
   },
   {
     name: "Chocolate Cake",
     price: 20000,
     category: "dessert",
-    image: "Assets/images/cake.jpg"
-  }
+    image: "Assets/images/cake.jpg",
+  },
 ];
 
+var menu = [];
 const menuContainer = document.getElementById("menuContainer");
 const searchInput = document.getElementById("searchInput");
 const categoryFilter = document.getElementById("categoryFilter");
+
+function renderMenuLoadingState(message = "Loading menu...") {
+  menuContainer.innerHTML = `
+    <div class="col-span-full rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
+      ${message}
+    </div>
+  `;
+}
+
+function populateCategoryFilter(items) {
+  const categories = [...new Set(items.map((item) => item.category))];
+  categoryFilter.innerHTML = [
+    `<option value="">All Categories</option>`,
+    ...categories.map((category) => `<option value="${category}">${category.charAt(0).toUpperCase()}${category.slice(1)}</option>`),
+  ].join("");
+}
 
 function renderMenu(items) {
   if (items.length === 0) {
@@ -72,9 +89,33 @@ function filterMenu() {
   renderMenu(filtered);
 }
 
-// Event listeners
 searchInput.addEventListener("input", filterMenu);
 categoryFilter.addEventListener("change", filterMenu);
 
-// Initial render
-renderMenu(menu);
+async function loadMenu() {
+  renderMenuLoadingState();
+
+  try {
+    const response = await apiFetch("/menu", {
+      method: "GET",
+      headers: {},
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to load menu.");
+    }
+
+    menu = await response.json();
+    populateCategoryFilter(menu);
+    renderMenu(menu);
+    return menu;
+  } catch (error) {
+    console.error(error);
+    menu = [...LOCAL_MENU_FALLBACK];
+    populateCategoryFilter(menu);
+    renderMenu(menu);
+    return menu;
+  }
+}
+
+window.menuReady = loadMenu();
