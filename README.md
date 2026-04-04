@@ -25,6 +25,12 @@ A full-stack restaurant ordering app with a customer-facing menu and a separate 
 - Menu items are served from the database
 - Customer menu also has a local fallback list so the UI can still render if the backend menu call fails
 
+### Deployment
+- Vercel is configured for Git-based deployments
+- `main` is the production branch
+- `Dev1.1` is used for preview deployments
+- The app is available through both customer routes and staff-only admin routes
+
 ## Tech Stack
 
 - Frontend: HTML, Tailwind CSS, Vanilla JavaScript
@@ -101,6 +107,29 @@ You can:
 
 When using Live Server, the frontend is already configured to call the backend on port `3000`.
 
+## Deployment Setup
+
+### Vercel
+
+- Production branch: `main`
+- Preview branch used in current workflow: `Dev1.1`
+- Production URL pattern: `https://your-project-name.vercel.app`
+- Preview URL pattern: `https://your-project-name-git-your-branch.vercel.app`
+
+### Production Routes
+
+- Customer page: `/`
+- Staff login: `/admin-login`
+- Staff dashboard: `/admin`
+
+### Required Vercel Environment Variables
+
+```env
+DATABASE_URL=your_neon_connection_string
+```
+
+Without `DATABASE_URL`, menu loading, order creation, order lookup, and admin login will not work in deployed environments.
+
 ## Admin Account Setup
 
 Create the first admin account from `Backend/`:
@@ -156,3 +185,5 @@ Note: add/remove menu items is temporarily disabled.
 - Staff dashboard is separated from the customer page
 - Menu images are referenced by asset path strings stored in the database
 - Completed orders are auto-purged after about 30 seconds only for testing and should be adjusted before production
+- The repository now contains Vercel deployment configuration at the repo root
+- `main` should be used for releases, while `Dev1.1` should be used for preview/testing work
