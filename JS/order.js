@@ -26,6 +26,15 @@ function createInitialOrderState() {
 }
 
 function renderOrderItems() {
+  if (menu.length === 0) {
+    orderItemsContainer.innerHTML = `
+      <div class="rounded-xl bg-white p-4 text-sm text-slate-500">
+        No menu items are available right now.
+      </div>
+    `;
+    return;
+  }
+
   orderItemsContainer.innerHTML = menu.map((item) => `
     <div class="flex items-center justify-between gap-4 rounded-xl bg-white p-3 shadow-sm">
       <label class="flex min-w-0 flex-1 items-center gap-3">
@@ -64,7 +73,11 @@ function resetOrderForm() {
   updateTotal();
 }
 
-function openOrderModal() {
+async function openOrderModal() {
+  if (window.menuReady) {
+    await window.menuReady;
+  }
+
   resetOrderForm();
   toggleModal(orderModal, true);
 }
@@ -124,7 +137,6 @@ orderItemsContainer.addEventListener("change", (event) => {
 });
 
 document.getElementById("openModal").addEventListener("click", openOrderModal);
-document.getElementById("closeModal").addEventListener("click", closeOrderModal);
 document.getElementById("cancelOrder").addEventListener("click", closeOrderModal);
 document.getElementById("closeSuccessModal").addEventListener("click", closeSuccessModal);
 
@@ -175,11 +187,8 @@ submitOrderButton.addEventListener("click", async () => {
   submitOrderButton.textContent = "Submitting...";
 
   try {
-    const response = await fetch(`${API_BASE_URL}/orders`, {
+    const response = await apiFetch("/orders", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify(orderData),
     });
 

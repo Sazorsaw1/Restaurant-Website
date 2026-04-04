@@ -17,7 +17,6 @@ function getStatusBadge(status) {
 
 const checkModal = document.getElementById("checkModal");
 const openCheckBtn = document.getElementById("openCheckModal");
-const closeCheckBtn = document.getElementById("closeCheckModal");
 const cancelCheckBtn = document.getElementById("cancelCheckOrder");
 const checkOrderBtn = document.getElementById("checkOrderBtn");
 const orderIdInput = document.getElementById("orderIdInput");
@@ -38,7 +37,6 @@ function closeCheckModal() {
 }
 
 openCheckBtn.addEventListener("click", openCheckModal);
-closeCheckBtn.addEventListener("click", closeCheckModal);
 cancelCheckBtn.addEventListener("click", closeCheckModal);
 
 checkModal.addEventListener("click", (e) => {
@@ -61,7 +59,9 @@ async function handleCheckOrder() {
   checkOrderBtn.textContent = "Checking...";
 
   try {
-    const response = await fetch(`${API_BASE_URL}/orders/${orderId}`);
+    const response = await apiFetch(`/orders/${orderId}`, {
+      method: "GET",
+    });
 
     if (!response.ok) {
       orderResult.innerHTML = `<p class="text-red-500">Order not found.</p>`;

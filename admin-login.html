@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login | E-Restaurant</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+  <main class="flex min-h-screen items-center justify-center px-6 py-10">
+    <div class="grid w-full max-w-5xl overflow-hidden rounded-3xl bg-slate-900 shadow-2xl ring-1 ring-slate-800 lg:grid-cols-[1.1fr_0.9fr]">
+      <section class="relative overflow-hidden bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-400 p-8 text-slate-950">
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.35),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.2),transparent_30%)]"></div>
+        <div class="relative">
+          <p class="mb-3 text-sm font-semibold uppercase tracking-[0.25em]">Staff Access</p>
+          <h1 class="max-w-md text-4xl font-black leading-tight">Admin console for kitchen and floor staff.</h1>
+          <p class="mt-4 max-w-md text-sm font-medium text-slate-900/75">
+            Sign in to review incoming orders, update their preparation status, and keep the customer tracking page accurate.
+          </p>
+
+          <div class="mt-10 grid gap-4 text-sm">
+            <div class="rounded-2xl bg-white/35 p-4 backdrop-blur-sm">
+              <p class="font-bold">Live order queue</p>
+              <p class="mt-1 text-slate-900/70">View every order in one place and quickly scan by table, total, and current status.</p>
+            </div>
+            <div class="rounded-2xl bg-white/25 p-4 backdrop-blur-sm">
+              <p class="font-bold">Protected staff workflow</p>
+              <p class="mt-1 text-slate-900/70">The admin page uses a backend session so login state is not stored in frontend JavaScript.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="p-8 lg:p-10">
+        <div class="mx-auto max-w-md">
+          <a href="/" class="text-sm font-medium text-slate-400 transition hover:text-slate-200">Back to customer page</a>
+          <h2 class="mt-6 text-3xl font-bold text-white">Admin Login</h2>
+          <p class="mt-2 text-sm text-slate-400">Use an admin account created in the database through the local setup script.</p>
+
+          <form id="adminLoginForm" class="mt-8 space-y-5">
+            <div>
+              <label for="adminUsername" class="mb-2 block text-sm font-semibold text-slate-200">Username</label>
+              <input
+                id="adminUsername"
+                name="username"
+                type="text"
+                autocomplete="username"
+                class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-300/30"
+                placeholder="admin"
+                required
+              >
+            </div>
+
+            <div>
+              <label for="adminPassword" class="mb-2 block text-sm font-semibold text-slate-200">Password</label>
+              <input
+                id="adminPassword"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-300/30"
+                placeholder="Enter admin password"
+                required
+              >
+            </div>
+
+            <div id="loginMessage" class="hidden rounded-2xl border px-4 py-3 text-sm"></div>
+
+            <button
+              id="adminLoginButton"
+              type="submit"
+              class="w-full rounded-2xl bg-orange-500 px-4 py-3 font-semibold text-white transition hover:bg-orange-600"
+            >
+              Sign In
+            </button>
+          </form>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="JS/app.js"></script>
+  <script src="JS/admin-login.js"></script>
+</body>
+</html>
