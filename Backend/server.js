@@ -66,13 +66,14 @@ const ROLE_PERMISSIONS = {
     manageMenuCatalog: false,
   },
 };
+let databaseInitializationPromise = null;
+let lastMaintenanceRunAt = 0;
 
 app.use(cors({
   origin: true,
   credentials: true,
 }));
 app.use(express.json());
-app.use(express.static(ROOT_DIR));
 
 function parseCookies(cookieHeader = "") {
   return cookieHeader.split(";").reduce((cookies, part) => {
@@ -344,6 +345,14 @@ async function initializeDatabase() {
   }
 }
 
+function ensureDatabaseInitialized() {
+  if (!databaseInitializationPromise) {
+    databaseInitializationPromise = initializeDatabase();
+  }
+
+  return databaseInitializationPromise;
+}
+
 async function purgeCompletedOrders() {
   const client = await pool.connect();
 
@@ -383,6 +392,29 @@ async function purgeCompletedOrders() {
     client.release();
   }
 }
+
+async function runMaintenanceIfNeeded() {
+  const now = Date.now();
+
+  if (now - lastMaintenanceRunAt < COMPLETED_ORDER_CLEANUP_INTERVAL_MS) {
+    return;
+  }
+
+  lastMaintenanceRunAt = now;
+  await purgeCompletedOrders();
+}
+
+app.use(async (req, res, next) => {
+  try {
+    await ensureDatabaseInitialized();
+    await runMaintenanceIfNeeded();
+    next();
+  } catch (error) {
+    console.error("Failed to initialize request context:", error);
+    res.status(500).json({ message: "Server initialization failed." });
+  }
+});
+app.use(express.static(ROOT_DIR));
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(ROOT_DIR, "index.html"));
@@ -780,22 +812,26 @@ app.get("/orders/:id", async (req, res) => {
   }
 });
 
-initializeDatabase()
-  .then(() => {
-    purgeCompletedOrders().catch((error) => {
-      console.error("Initial completed-order purge failed:", error);
-    });
-    setInterval(() => {
+if (require.main === module) {
+  ensureDatabaseInitialized()
+    .then(() => {
       purgeCompletedOrders().catch((error) => {
-        console.error("Scheduled completed-order purge failed:", error);
+        console.error("Initial completed-order purge failed:", error);
       });
-    }, COMPLETED_ORDER_CLEANUP_INTERVAL_MS);
+      setInterval(() => {
+        purgeCompletedOrders().catch((error) => {
+          console.error("Scheduled completed-order purge failed:", error);
+        });
+      }, COMPLETED_ORDER_CLEANUP_INTERVAL_MS);
 
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+      });
+    })
+    .catch((error) => {
+      console.error("Failed to initialize database:", error);
+      process.exit(1);
     });
-  })
-  .catch((error) => {
-    console.error("Failed to initialize database:", error);
-    process.exit(1);
-  });
+}
+
+module.exports = app;
