@@ -1,0 +1,4 @@
+LOCAL_ADMIN_NOTE.md
+Backend/.env
+Backend/node_modules
+.git

@@ -35,3 +35,4 @@ Thumbs.db
 # Build files (future)
 dist/
 build/
+.vercel
