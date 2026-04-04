@@ -1,127 +1,130 @@
 function getStatusBadge(status) {
-  const base = "px-2 py-1 rounded text-white text-xs font-semibold";
+  const base = "rounded-full px-3 py-1 text-xs font-semibold text-white";
 
   switch (status) {
     case "Pending":
-      return `<span class="${base} bg-yellow-500">Pending</span>`;
+      return `<span class="${base} bg-amber-500">Pending</span>`;
     case "Preparing":
-      return `<span class="${base} bg-blue-500">Preparing</span>`;
+      return `<span class="${base} bg-orange-500">Preparing</span>`;
     case "Ready":
       return `<span class="${base} bg-green-500">Ready</span>`;
     case "Completed":
-      return `<span class="${base} bg-gray-600">Completed</span>`;
+      return `<span class="${base} bg-slate-700">Completed</span>`;
     default:
-      return `<span class="${base} bg-gray-400">${status}</span>`;
+      return `<span class="${base} bg-slate-400">${status}</span>`;
   }
 }
 
 const checkModal = document.getElementById("checkModal");
 const openCheckBtn = document.getElementById("openCheckModal");
 const closeCheckBtn = document.getElementById("closeCheckModal");
+const cancelCheckBtn = document.getElementById("cancelCheckOrder");
 const checkOrderBtn = document.getElementById("checkOrderBtn");
+const orderIdInput = document.getElementById("orderIdInput");
 const orderResult = document.getElementById("orderResult");
 
-// Open modal
-openCheckBtn.addEventListener("click", () => {
-  // Reset input
-  document.getElementById("orderIdInput").value = "";
-
-  // Clear previous result
+function resetCheckOrderState() {
+  orderIdInput.value = "";
   orderResult.innerHTML = "";
+}
 
-  // Open modal
-  checkModal.classList.remove("hidden");
-  checkModal.classList.add("flex");
-});
+function openCheckModal() {
+  resetCheckOrderState();
+  toggleModal(checkModal, true);
+}
 
-// Close modal
-closeCheckBtn.addEventListener("click", () => {
-  checkModal.classList.add("hidden");
-  checkModal.classList.remove("flex");
-});
+function closeCheckModal() {
+  toggleModal(checkModal, false);
+}
 
-// Close outside
+openCheckBtn.addEventListener("click", openCheckModal);
+closeCheckBtn.addEventListener("click", closeCheckModal);
+cancelCheckBtn.addEventListener("click", closeCheckModal);
+
 checkModal.addEventListener("click", (e) => {
   if (e.target === checkModal) {
-    checkModal.classList.add("hidden");
-    checkModal.classList.remove("flex");
+    closeCheckModal();
   }
 });
 
-// Check order
-checkOrderBtn.addEventListener("click", async () => {
-const input = document.getElementById("orderIdInput").value.trim();
+async function handleCheckOrder() {
+  const input = orderIdInput.value.trim();
 
-if (!input) {
-    alert("Please enter an Order ID");
-    return;
-}
-
-const orderId = "ORD-" + input;
-
-  if (!orderId) {
+  if (!input) {
     alert("Please enter an Order ID");
     return;
   }
-// Check Order API
-  const response = await fetch(`http://localhost:3000/orders/${orderId}`);
 
-if (!response.ok) {
-  orderResult.innerHTML = `<p class="text-red-500">Order not found</p>`;
-  return;
-}
+  const orderId = `ORD-${input}`;
+  orderResult.innerHTML = `<p class="text-slate-500">Checking order...</p>`;
+  checkOrderBtn.disabled = true;
+  checkOrderBtn.textContent = "Checking...";
 
-const order = await response.json();
+  try {
+    const response = await fetch(`${API_BASE_URL}/orders/${orderId}`);
 
-  if (!order) {
-    orderResult.innerHTML = `<p class="text-red-500">Order not found</p>`;
-    return;
-  }
+    if (!response.ok) {
+      orderResult.innerHTML = `<p class="text-red-500">Order not found.</p>`;
+      return;
+    }
 
-  // Render result
-  let itemsHTML = "";
-  order.items.forEach(item => {
-    itemsHTML += `
-      <div class="flex justify-between">
-        <span>${item.name} x${item.quantity}</span>
-        <span>Rp ${item.total.toLocaleString()}</span>
+    const order = await response.json();
+    const items = parseOrderItems(order.items);
+    const totalPrice = Number(order.total_price ?? order.totalPrice ?? 0);
+
+    if (!order || items.length === 0) {
+      orderResult.innerHTML = `<p class="text-red-500">Order data is incomplete.</p>`;
+      return;
+    }
+
+    orderResult.innerHTML = `
+      <div class="space-y-4">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-xs uppercase tracking-wide text-slate-400">Order ID</p>
+            <p class="font-semibold text-slate-900">${order.order_id ?? order.orderId}</p>
+          </div>
+          ${getStatusBadge(order.status)}
+        </div>
+
+        <div>
+          <p class="text-xs uppercase tracking-wide text-slate-400">Table</p>
+          <p class="font-semibold text-slate-900">${order.table_number ?? order.tableNumber}</p>
+        </div>
+
+        <div>
+          <p class="mb-2 text-xs uppercase tracking-wide text-slate-400">Items</p>
+          <div class="space-y-2">
+            ${items.map((item) => `
+              <div class="flex justify-between rounded-lg bg-slate-50 px-3 py-2">
+                <span class="text-slate-700">${item.name} x${item.quantity}</span>
+                <span class="font-medium text-slate-900">${formatCurrency(item.total)}</span>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+
+        <div class="flex justify-between border-t border-slate-200 pt-3 text-base font-bold text-slate-900">
+          <span>Total</span>
+          <span>${formatCurrency(totalPrice)}</span>
+        </div>
       </div>
     `;
-  });
+  } catch (error) {
+    console.error(error);
+    orderResult.innerHTML = `<p class="text-red-500">Unable to reach the backend. Please try again.</p>`;
+  } finally {
+    checkOrderBtn.disabled = false;
+    checkOrderBtn.textContent = "Check";
+  }
+}
 
-orderResult.innerHTML = `
-  <div class="space-y-3">
+checkOrderBtn.addEventListener("click", handleCheckOrder);
 
-    <div class="flex justify-between items-center">
-      <div>
-        <p class="text-sm text-gray-500">Order ID</p>
-        <p class="font-semibold">${order.order_id}</p>
-      </div>
-      ${getStatusBadge(order.status)}
-    </div>
-
-    <div>
-      <p class="text-sm text-gray-500">Table</p>
-      <p class="font-semibold">${order.table_number}</p>
-    </div>
-
-    <div>
-      <p class="text-sm text-gray-500 mb-1">Items</p>
-      <div class="space-y-1">
-        ${order.items.map(item => `
-          <div class="flex justify-between text-sm">
-            <span>${item.name} x${item.quantity}</span>
-            <span>Rp ${item.total.toLocaleString()}</span>
-          </div>
-        `).join("")}
-      </div>
-    </div>
-
-    <div class="border-t pt-2 flex justify-between font-bold">
-      <span>Total</span>
-      <span>Rp ${order.total_price.toLocaleString()}</span>
-    </div>
-
-  </div>
-`;
+orderIdInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    handleCheckOrder();
+  }
 });
+
+closeCheckModal();
