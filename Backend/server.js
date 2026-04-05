@@ -16,7 +16,7 @@ const COMPLETED_ORDER_RETENTION_SECONDS = 30;
 const COMPLETED_ORDER_CLEANUP_INTERVAL_MS = 5 * 1000;
 const VALID_ORDER_STATUSES = ["Pending", "Preparing", "Ready", "Completed"];
 const VALID_USER_ROLES = ["admin", "staff", "chef"];
-const VALID_MENU_CATEGORIES = ["food", "drink", "dessert", "main-course", "grill", "noodles", "soup", "snack", "tea", "coffee", "juice"];
+const VALID_MENU_CATEGORIES = ["main-course", "snack", "beverages", "dessert"];
 const ORDER_ID_PATTERN = /^ORD-\d{6}$/;
 const RATE_LIMITS = {
   adminLogin: {
@@ -41,35 +41,35 @@ const RATE_LIMITS = {
 const DEFAULT_MENU_ITEMS = [
   {
     name: "Fried Rice",
-    category: "food",
+    category: "main-course",
     price: 25000,
     image: "Assets/images/Fried-Rice.jpg",
     isAvailable: true,
   },
   {
     name: "Chicken Satay",
-    category: "grill",
+    category: "main-course",
     price: 30000,
     image: "Assets/images/Satay.jpg",
     isAvailable: true,
   },
   {
     name: "Seafood Noodles",
-    category: "noodles",
+    category: "main-course",
     price: 29000,
     image: "Assets/images/Fried-Rice.jpg",
     isAvailable: true,
   },
   {
     name: "Grilled Gourami",
-    category: "grill",
+    category: "main-course",
     price: 48000,
     image: "Assets/images/Grilled Gourami.png",
     isAvailable: true,
   },
   {
     name: "Chicken Soup",
-    category: "soup",
+    category: "main-course",
     price: 22000,
     image: "Assets/images/Fried-Rice.jpg",
     isAvailable: true,
@@ -83,35 +83,35 @@ const DEFAULT_MENU_ITEMS = [
   },
   {
     name: "Iced Tea",
-    category: "tea",
+    category: "beverages",
     price: 10000,
     image: "Assets/images/Iced-Tea.jpg",
     isAvailable: true,
   },
   {
     name: "Lemon Tea",
-    category: "tea",
+    category: "beverages",
     price: 12000,
     image: "Assets/images/Iced-Tea.jpg",
     isAvailable: true,
   },
   {
     name: "Iced Americano",
-    category: "coffee",
+    category: "beverages",
     price: 18000,
     image: "Assets/images/Iced-Tea.jpg",
     isAvailable: true,
   },
   {
     name: "Avocado Juice",
-    category: "juice",
+    category: "beverages",
     price: 19000,
     image: "Assets/images/Avocado Juice.jpg",
     isAvailable: true,
   },
   {
     name: "Lychee Cooler",
-    category: "juice",
+    category: "beverages",
     price: 17000,
     image: "Assets/images/Iced-Tea.jpg",
     isAvailable: true,
@@ -192,6 +192,14 @@ function normalizeUserRole(role) {
 function normalizeMenuCategory(category) {
   const normalized = String(category || "").trim().toLowerCase();
   return VALID_MENU_CATEGORIES.includes(normalized) ? normalized : null;
+}
+
+function humanizeMenuCategory(category) {
+  return String(category || "")
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function serializeOrder(row) {
@@ -531,6 +539,17 @@ async function initializeDatabase() {
     ADD COLUMN IF NOT EXISTS requires_staff_followup BOOLEAN NOT NULL DEFAULT FALSE;
 
     CREATE INDEX IF NOT EXISTS idx_orders_completed_at ON orders(completed_at);
+  `);
+
+  await pool.query(`
+    UPDATE menu_items
+    SET category = CASE
+      WHEN category IN ('food', 'main-course', 'grill', 'noodles', 'soup') THEN 'main-course'
+      WHEN category IN ('drink', 'tea', 'coffee', 'juice') THEN 'beverages'
+      WHEN category = 'snack' THEN 'snack'
+      WHEN category = 'dessert' THEN 'dessert'
+      ELSE category
+    END
   `);
 
   const existingMenuItemsResult = await pool.query("SELECT name FROM menu_items");
@@ -956,20 +975,27 @@ app.post("/admin/menu", requireAdminAuth, requirePermission("manageMenuCatalog")
   }
 });
 
-app.patch("/admin/menu/:id/price", requireAdminAuth, requirePermission("manageMenuCatalog"), async (req, res) => {
+app.patch("/admin/menu/:id", requireAdminAuth, requirePermission("manageMenuCatalog"), async (req, res) => {
   try {
     const price = Number(req.body.price);
+    const category = normalizeMenuCategory(req.body.category);
 
     if (!Number.isInteger(price) || price < 0) {
       return res.status(400).json({ message: "Price must be a non-negative integer." });
     }
 
+    if (!category) {
+      return res.status(400).json({ message: "Please choose a valid menu category." });
+    }
+
     const result = await pool.query(
       `UPDATE menu_items
-       SET price = $1, updated_at = NOW()
-       WHERE id = $2
+       SET price = $1,
+           category = $2,
+           updated_at = NOW()
+       WHERE id = $3
        RETURNING *`,
-      [price, req.params.id]
+      [price, category, req.params.id]
     );
 
     if (result.rows.length === 0) {
@@ -979,7 +1005,7 @@ app.patch("/admin/menu/:id/price", requireAdminAuth, requirePermission("manageMe
     res.json(serializeMenuItem(result.rows[0]));
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Failed to update price." });
+    res.status(500).json({ message: "Failed to update menu details." });
   }
 });
 

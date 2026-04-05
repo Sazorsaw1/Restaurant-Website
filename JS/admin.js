@@ -17,6 +17,7 @@ const usersPanelTrigger = document.getElementById("usersPanelTrigger");
 const userManagementList = document.getElementById("userManagementList");
 const createUserForm = document.getElementById("createUserForm");
 const createUserButton = document.getElementById("createUserButton");
+const sidebarSessionRole = document.getElementById("sidebarSessionRole");
 const adminPanelTriggers = Array.from(document.querySelectorAll("[data-admin-panel-trigger]"));
 const adminPanels = Array.from(document.querySelectorAll("[data-admin-panel]"));
 
@@ -24,9 +25,15 @@ const statTotalOrders = document.getElementById("statTotalOrders");
 const statPendingOrders = document.getElementById("statPendingOrders");
 const statPreparingOrders = document.getElementById("statPreparingOrders");
 const statClosedOrders = document.getElementById("statClosedOrders");
+const MENU_CATEGORIES = [
+  { value: "main-course", label: "Main Course" },
+  { value: "snack", label: "Snack" },
+  { value: "beverages", label: "Beverages" },
+  { value: "dessert", label: "Dessert" },
+];
 
 let currentSession = null;
-let activeAdminPanel = "orders";
+let activeAdminPanel = "overview";
 
 function setPanelTriggerButtonState(button, isActive) {
   button.classList.toggle("bg-white/15", !isActive);
@@ -49,6 +56,16 @@ function setPanelTriggerButtonState(button, isActive) {
   } else {
     button.classList.remove("bg-white", "text-slate-900", "shadow-sm", "border-white", "hover:bg-white");
   }
+}
+
+function getMenuCategoryOptions(selectedCategory) {
+  return MENU_CATEGORIES.map((category) => `
+    <option value="${category.value}" ${category.value === selectedCategory ? "selected" : ""}>${category.label}</option>
+  `).join("");
+}
+
+function formatCategoryLabel(category) {
+  return MENU_CATEGORIES.find((entry) => entry.value === category)?.label || category;
 }
 
 function showDashboardMessage(message, isError = false) {
@@ -107,12 +124,17 @@ function applyRoleView() {
   menuPanelTrigger.classList.toggle("hidden", !permissions.manageMenuCatalog);
   usersPanelTrigger.classList.toggle("hidden", !permissions.manageUsers);
   openMenuCreateModalBtn.classList.toggle("hidden", !permissions.manageMenuCatalog);
+  sidebarSessionRole.textContent = permissions.manageUsers
+    ? "Admin session"
+    : permissions.manageMenuCatalog
+      ? "Chef session"
+      : "Staff session";
   menuSectionHint.textContent = permissions.manageMenuCatalog
     ? "Chef and admin can add menu items with an image path or URL. Removing uses archive/restore so items can be safely brought back later."
     : "Menu management is limited to chef and admin accounts.";
 
   if ((!permissions.manageUsers && activeAdminPanel === "users") || (!permissions.manageMenuCatalog && activeAdminPanel === "menu")) {
-    setActiveAdminPanel("orders");
+    setActiveAdminPanel("overview");
     return;
   }
 
@@ -227,15 +249,18 @@ function renderMenuItems(items) {
                 ${item.isAvailable ? "Active" : "Archived"}
               </span>
             </div>
-            <p class="text-sm capitalize text-slate-500">${item.category}</p>
+            <p class="text-sm text-slate-500">${formatCategoryLabel(item.category)}</p>
             <p class="text-xs text-slate-400">${item.image}</p>
           </div>
         </div>
 
         <div class="flex flex-col gap-3 md:flex-row md:items-center">
+          <select data-category-id="${item.id}" class="rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
+            ${getMenuCategoryOptions(item.category)}
+          </select>
           <input data-price-id="${item.id}" type="number" min="0" value="${item.price}" class="rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
-          <button data-save-price-id="${item.id}" class="rounded-xl bg-slate-900 px-4 py-2 font-medium text-white transition hover:bg-slate-800">
-            Save Price
+          <button data-save-menu-id="${item.id}" class="rounded-xl bg-slate-900 px-4 py-2 font-medium text-white transition hover:bg-slate-800">
+            Save Details
           </button>
           ${canManageCatalog ? `
             <button data-toggle-availability-id="${item.id}" data-next-availability="${item.isAvailable ? "false" : "true"}" class="rounded-xl px-4 py-2 font-medium text-white transition ${item.isAvailable ? "bg-red-500 hover:bg-red-600" : "bg-emerald-500 hover:bg-emerald-600"}">
@@ -436,25 +461,29 @@ adminOrdersList.addEventListener("click", async (event) => {
 });
 
 menuManagementList.addEventListener("click", async (event) => {
-  const savePriceId = event.target.dataset.savePriceId;
+  const saveMenuId = event.target.dataset.saveMenuId;
   const toggleAvailabilityId = event.target.dataset.toggleAvailabilityId;
 
-  if (!savePriceId && !toggleAvailabilityId) {
+  if (!saveMenuId && !toggleAvailabilityId) {
     return;
   }
 
   const originalText = event.target.textContent;
   event.target.disabled = true;
-  event.target.textContent = savePriceId ? "Saving..." : "Updating...";
+  event.target.textContent = saveMenuId ? "Saving..." : "Updating...";
 
   try {
     let response;
 
-    if (savePriceId) {
-      const input = document.querySelector(`[data-price-id="${savePriceId}"]`);
-      response = await apiFetch(`/admin/menu/${savePriceId}/price`, {
+    if (saveMenuId) {
+      const priceInput = document.querySelector(`[data-price-id="${saveMenuId}"]`);
+      const categorySelect = document.querySelector(`[data-category-id="${saveMenuId}"]`);
+      response = await apiFetch(`/admin/menu/${saveMenuId}`, {
         method: "PATCH",
-        body: JSON.stringify({ price: Number(input.value) }),
+        body: JSON.stringify({
+          price: Number(priceInput.value),
+          category: categorySelect.value,
+        }),
       });
     } else {
       response = await apiFetch(`/admin/menu/${toggleAvailabilityId}/availability`, {
@@ -469,7 +498,7 @@ menuManagementList.addEventListener("click", async (event) => {
       throw new Error(data?.message || "Menu update failed.");
     }
 
-    showDashboardMessage(savePriceId ? "Menu price updated." : `Menu item ${data.isAvailable ? "restored" : "archived"}.`);
+    showDashboardMessage(saveMenuId ? "Menu details updated." : `Menu item ${data.isAvailable ? "restored" : "archived"}.`);
     await refreshDashboard();
   } catch (error) {
     console.error(error);

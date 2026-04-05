@@ -2,31 +2,31 @@ const LOCAL_MENU_FALLBACK = [
   {
     name: "Fried Rice",
     price: 25000,
-    category: "food",
+    category: "main-course",
     image: "Assets/images/Fried-Rice.jpg",
   },
   {
     name: "Chicken Satay",
     price: 30000,
-    category: "grill",
+    category: "main-course",
     image: "Assets/images/Satay.jpg",
   },
   {
     name: "Seafood Noodles",
     price: 29000,
-    category: "noodles",
+    category: "main-course",
     image: "Assets/images/Fried-Rice.jpg",
   },
   {
     name: "Grilled Gourami",
     price: 48000,
-    category: "grill",
+    category: "main-course",
     image: "Assets/images/Grilled Gourami.png",
   },
   {
     name: "Chicken Soup",
     price: 22000,
-    category: "soup",
+    category: "main-course",
     image: "Assets/images/Fried-Rice.jpg",
   },
   {
@@ -38,31 +38,31 @@ const LOCAL_MENU_FALLBACK = [
   {
     name: "Iced Tea",
     price: 10000,
-    category: "tea",
+    category: "beverages",
     image: "Assets/images/Iced-Tea.jpg",
   },
   {
     name: "Lemon Tea",
     price: 12000,
-    category: "tea",
+    category: "beverages",
     image: "Assets/images/Iced-Tea.jpg",
   },
   {
     name: "Iced Americano",
     price: 18000,
-    category: "coffee",
+    category: "beverages",
     image: "Assets/images/Iced-Tea.jpg",
   },
   {
     name: "Avocado Juice",
     price: 19000,
-    category: "juice",
+    category: "beverages",
     image: "Assets/images/Avocado Juice.jpg",
   },
   {
     name: "Lychee Cooler",
     price: 17000,
-    category: "juice",
+    category: "beverages",
     image: "Assets/images/Iced-Tea.jpg",
   },
   {

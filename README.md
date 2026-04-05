@@ -19,6 +19,7 @@ A full-stack restaurant ordering app with a customer-facing menu and a separate 
 - Sidebar-based admin navigation for orders, menu management, and user management
 - Menu pricing and catalog controls are grouped inside `Manage Menu`
 - Chef and admin can add menu items with an image path or URL
+- Chef and admin can change a menu item's category and price from the management list
 - Chef and admin can archive or restore menu items without deleting the database record
 - Add-menu flow uses a modal with a blurred backdrop instead of an always-open form
 - Large or detailed orders show a staff-follow-up notice after submission and inside the dashboard
@@ -195,6 +196,7 @@ npm run create:admin -- admin StrongPassword123 "Restaurant Admin"
 - Staff dashboard is separated from the customer page
 - Menu images are referenced by asset path strings stored in the database
 - New menu items currently use an image path or URL instead of file upload storage
+- Menu categories are intentionally grouped into broader labels such as `Main Course`, `Snack`, `Beverages`, and `Dessert`
 - Completed orders are auto-purged after about 30 seconds only for testing and should be adjusted before production
 - The repository now contains Vercel deployment configuration at the repo root
 - `main` should be used for releases, while `Dev1.1` should be used for preview/testing work
