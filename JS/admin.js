@@ -6,8 +6,12 @@ const adminOrdersList = document.getElementById("adminOrdersList");
 const refreshOrdersBtn = document.getElementById("refreshOrdersBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const menuSectionHint = document.getElementById("menuSectionHint");
+const menuPanelTrigger = document.getElementById("menuPanelTrigger");
 const menuCreateForm = document.getElementById("menuCreateForm");
 const menuCreateButton = document.getElementById("menuCreateButton");
+const openMenuCreateModalBtn = document.getElementById("openMenuCreateModal");
+const closeMenuCreateModalBtn = document.getElementById("closeMenuCreateModal");
+const menuCreateModal = document.getElementById("menuCreateModal");
 const menuManagementList = document.getElementById("menuManagementList");
 const usersPanelTrigger = document.getElementById("usersPanelTrigger");
 const userManagementList = document.getElementById("userManagementList");
@@ -25,14 +29,26 @@ let currentSession = null;
 let activeAdminPanel = "orders";
 
 function setPanelTriggerButtonState(button, isActive) {
-  button.classList.toggle("bg-slate-900", isActive);
-  button.classList.toggle("text-white", isActive);
-  button.classList.toggle("hover:bg-slate-800", isActive);
+  button.classList.toggle("bg-white/15", !isActive);
+  button.classList.toggle("text-white", !isActive);
+  button.classList.toggle("hover:bg-white/20", !isActive);
+  button.classList.toggle("bg-white", isActive);
+  button.classList.toggle("text-slate-900", isActive);
+  button.classList.toggle("shadow-sm", isActive);
+  button.classList.toggle("border-white", isActive);
+  button.classList.toggle("hover:bg-white", isActive);
 
   button.classList.toggle("border", !isActive);
-  button.classList.toggle("border-slate-300", !isActive);
-  button.classList.toggle("text-slate-700", !isActive);
-  button.classList.toggle("hover:bg-slate-50", !isActive);
+  button.classList.toggle("border-white/15", !isActive);
+  button.classList.toggle("bg-transparent", !isActive);
+  button.classList.toggle("text-slate-200", !isActive);
+  button.classList.toggle("hover:bg-white/10", !isActive);
+
+  if (isActive) {
+    button.classList.remove("bg-transparent", "text-slate-200", "hover:bg-white/10");
+  } else {
+    button.classList.remove("bg-white", "text-slate-900", "shadow-sm", "border-white", "hover:bg-white");
+  }
 }
 
 function showDashboardMessage(message, isError = false) {
@@ -69,7 +85,11 @@ function updateStats(orders) {
 
 function setActiveAdminPanel(panelName) {
   const permissions = currentSession?.permissions || {};
-  const nextPanel = panelName === "users" && !permissions.manageUsers ? "orders" : panelName;
+  const nextPanel = panelName === "users" && !permissions.manageUsers
+    ? "orders"
+    : panelName === "menu" && !permissions.manageMenuCatalog
+      ? "orders"
+      : panelName;
   activeAdminPanel = nextPanel;
 
   adminPanels.forEach((panel) => {
@@ -84,18 +104,28 @@ function setActiveAdminPanel(panelName) {
 function applyRoleView() {
   const permissions = currentSession?.permissions || {};
 
+  menuPanelTrigger.classList.toggle("hidden", !permissions.manageMenuCatalog);
   usersPanelTrigger.classList.toggle("hidden", !permissions.manageUsers);
-  menuCreateForm.classList.toggle("hidden", !permissions.manageMenuCatalog);
+  openMenuCreateModalBtn.classList.toggle("hidden", !permissions.manageMenuCatalog);
   menuSectionHint.textContent = permissions.manageMenuCatalog
     ? "Chef and admin can add menu items with an image path or URL. Removing uses archive/restore so items can be safely brought back later."
-    : "You can update prices here. Menu add/remove is limited to chef and admin accounts.";
+    : "Menu management is limited to chef and admin accounts.";
 
-  if (!permissions.manageUsers && activeAdminPanel === "users") {
+  if ((!permissions.manageUsers && activeAdminPanel === "users") || (!permissions.manageMenuCatalog && activeAdminPanel === "menu")) {
     setActiveAdminPanel("orders");
     return;
   }
 
   setActiveAdminPanel(activeAdminPanel);
+}
+
+function openMenuCreateModal() {
+  menuCreateForm.reset();
+  toggleModal(menuCreateModal, true);
+}
+
+function closeMenuCreateModal() {
+  toggleModal(menuCreateModal, false);
 }
 
 function renderOrders(orders) {
@@ -314,6 +344,11 @@ async function loadOrders() {
 }
 
 async function loadMenuManagement() {
+  if (!currentSession?.permissions?.manageMenuCatalog) {
+    menuManagementList.innerHTML = "";
+    return [];
+  }
+
   const response = await apiFetch("/admin/menu", {
     method: "GET",
   });
@@ -353,7 +388,7 @@ async function refreshDashboard() {
   try {
     await Promise.all([
       loadOrders(),
-      loadMenuManagement(),
+      currentSession?.permissions?.manageMenuCatalog ? loadMenuManagement() : Promise.resolve([]),
       loadUsers(),
     ]);
   } catch (error) {
@@ -468,6 +503,7 @@ menuCreateForm.addEventListener("submit", async (event) => {
     }
 
     menuCreateForm.reset();
+    closeMenuCreateModal();
     showDashboardMessage(`Added menu item ${data.name}.`);
     await refreshDashboard();
   } catch (error) {
@@ -564,6 +600,21 @@ userManagementList.addEventListener("click", async (event) => {
 
 refreshOrdersBtn.addEventListener("click", refreshDashboard);
 
+openMenuCreateModalBtn.addEventListener("click", openMenuCreateModal);
+closeMenuCreateModalBtn.addEventListener("click", closeMenuCreateModal);
+
+menuCreateModal.addEventListener("click", (event) => {
+  if (event.target === menuCreateModal) {
+    closeMenuCreateModal();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && menuCreateModal.classList.contains("flex")) {
+    closeMenuCreateModal();
+  }
+});
+
 adminPanelTriggers.forEach((button) => {
   button.addEventListener("click", () => {
     setActiveAdminPanel(button.dataset.adminPanelTrigger);
@@ -599,3 +650,5 @@ logoutBtn.addEventListener("click", async () => {
     window.location.href = `${API_BASE_URL}/admin-login`;
   }
 })();
+
+closeMenuCreateModal();

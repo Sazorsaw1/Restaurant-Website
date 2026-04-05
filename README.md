@@ -8,6 +8,7 @@ A full-stack restaurant ordering app with a customer-facing menu and a separate 
 - Browse menu items on the homepage
 - Search and filter by category
 - Create an order from a modal
+- Supports table selection from `Table 1` through `Table 10`
 - Generate an order ID in the `ORD-XXXXXX` format
 - Check order status by entering only the numeric part of the order ID
 
@@ -15,9 +16,11 @@ A full-stack restaurant ordering app with a customer-facing menu and a separate 
 - Separate login page for staff
 - Role-based access for `admin`, `staff`, and `chef`
 - Update customer order statuses
-- Update prices for existing menu items
+- Sidebar-based admin navigation for orders, menu management, and user management
+- Menu pricing and catalog controls are grouped inside `Manage Menu`
 - Chef and admin can add menu items with an image path or URL
 - Chef and admin can archive or restore menu items without deleting the database record
+- Add-menu flow uses a modal with a blurred backdrop instead of an always-open form
 - Large or detailed orders show a staff-follow-up notice after submission and inside the dashboard
 - Admin-only user management for staff dashboard accounts
 - Completed orders are automatically deleted after about 30 seconds for testing
@@ -151,7 +154,7 @@ npm run create:admin -- admin StrongPassword123 "Restaurant Admin"
 ## Staff Roles
 
 - `admin`: can create users, remove users, change another user's role, update order statuses, change prices, and manage the menu catalog
-- `staff`: can update order statuses and change prices
+- `staff`: can update order statuses
 - `chef`: can update order statuses, change prices, and add, archive, or restore menu items
 
 ## API Overview

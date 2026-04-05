@@ -16,7 +16,7 @@ const COMPLETED_ORDER_RETENTION_SECONDS = 30;
 const COMPLETED_ORDER_CLEANUP_INTERVAL_MS = 5 * 1000;
 const VALID_ORDER_STATUSES = ["Pending", "Preparing", "Ready", "Completed"];
 const VALID_USER_ROLES = ["admin", "staff", "chef"];
-const VALID_MENU_CATEGORIES = ["food", "drink", "dessert"];
+const VALID_MENU_CATEGORIES = ["food", "drink", "dessert", "main-course", "grill", "noodles", "soup", "snack", "tea", "coffee", "juice"];
 const ORDER_ID_PATTERN = /^ORD-\d{6}$/;
 const RATE_LIMITS = {
   adminLogin: {
@@ -48,15 +48,71 @@ const DEFAULT_MENU_ITEMS = [
   },
   {
     name: "Chicken Satay",
-    category: "food",
+    category: "grill",
     price: 30000,
     image: "Assets/images/Satay.jpg",
     isAvailable: true,
   },
   {
+    name: "Seafood Noodles",
+    category: "noodles",
+    price: 29000,
+    image: "Assets/images/Fried-Rice.jpg",
+    isAvailable: true,
+  },
+  {
+    name: "Grilled Gourami",
+    category: "grill",
+    price: 48000,
+    image: "Assets/images/Grilled Gourami.png",
+    isAvailable: true,
+  },
+  {
+    name: "Chicken Soup",
+    category: "soup",
+    price: 22000,
+    image: "Assets/images/Fried-Rice.jpg",
+    isAvailable: true,
+  },
+  {
+    name: "Fried Tofu",
+    category: "snack",
+    price: 17000,
+    image: "Assets/images/Fried Tofu.jpg",
+    isAvailable: true,
+  },
+  {
     name: "Iced Tea",
-    category: "drink",
+    category: "tea",
     price: 10000,
+    image: "Assets/images/Iced-Tea.jpg",
+    isAvailable: true,
+  },
+  {
+    name: "Lemon Tea",
+    category: "tea",
+    price: 12000,
+    image: "Assets/images/Iced-Tea.jpg",
+    isAvailable: true,
+  },
+  {
+    name: "Iced Americano",
+    category: "coffee",
+    price: 18000,
+    image: "Assets/images/Iced-Tea.jpg",
+    isAvailable: true,
+  },
+  {
+    name: "Avocado Juice",
+    category: "juice",
+    price: 19000,
+    image: "Assets/images/Avocado Juice.jpg",
+    isAvailable: true,
+  },
+  {
+    name: "Lychee Cooler",
+    category: "juice",
+    price: 17000,
     image: "Assets/images/Iced-Tea.jpg",
     isAvailable: true,
   },
@@ -65,6 +121,20 @@ const DEFAULT_MENU_ITEMS = [
     category: "dessert",
     price: 20000,
     image: "Assets/images/cake.jpg",
+    isAvailable: true,
+  },
+  {
+    name: "Chocolate Pudding",
+    category: "dessert",
+    price: 18000,
+    image: "Assets/images/Chocolate Pudding.jpg",
+    isAvailable: true,
+  },
+  {
+    name: "Vanilla Pudding",
+    category: "dessert",
+    price: 18000,
+    image: "Assets/images/Vanilla Pudding.jpg",
     isAvailable: true,
   },
 ];
@@ -78,7 +148,7 @@ const ROLE_PERMISSIONS = {
   staff: {
     manageUsers: false,
     updateOrderStatus: true,
-    updateMenuPrice: true,
+    updateMenuPrice: false,
     manageMenuCatalog: false,
   },
   chef: {
@@ -463,17 +533,19 @@ async function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_orders_completed_at ON orders(completed_at);
   `);
 
-  const menuCountResult = await pool.query("SELECT COUNT(*)::int AS count FROM menu_items");
-  const menuCount = menuCountResult.rows[0]?.count || 0;
+  const existingMenuItemsResult = await pool.query("SELECT name FROM menu_items");
+  const existingMenuNames = new Set(existingMenuItemsResult.rows.map((row) => row.name));
 
-  if (menuCount === 0) {
-    for (const item of DEFAULT_MENU_ITEMS) {
-      await pool.query(
-        `INSERT INTO menu_items (name, category, price, image, is_available)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [item.name, item.category, item.price, item.image, item.isAvailable]
-      );
+  for (const item of DEFAULT_MENU_ITEMS) {
+    if (existingMenuNames.has(item.name)) {
+      continue;
     }
+
+    await pool.query(
+      `INSERT INTO menu_items (name, category, price, image, is_available)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [item.name, item.category, item.price, item.image, item.isAvailable]
+    );
   }
 }
 
@@ -838,7 +910,7 @@ app.delete("/admin/users/:id", requireAdminAuth, requirePermission("manageUsers"
   }
 });
 
-app.get("/admin/menu", requireAdminAuth, requirePermission("updateMenuPrice"), async (req, res) => {
+app.get("/admin/menu", requireAdminAuth, requirePermission("manageMenuCatalog"), async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT *
@@ -884,7 +956,7 @@ app.post("/admin/menu", requireAdminAuth, requirePermission("manageMenuCatalog")
   }
 });
 
-app.patch("/admin/menu/:id/price", requireAdminAuth, requirePermission("updateMenuPrice"), async (req, res) => {
+app.patch("/admin/menu/:id/price", requireAdminAuth, requirePermission("manageMenuCatalog"), async (req, res) => {
   try {
     const price = Number(req.body.price);
 
