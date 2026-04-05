@@ -16,25 +16,103 @@ const COMPLETED_ORDER_RETENTION_SECONDS = 30;
 const COMPLETED_ORDER_CLEANUP_INTERVAL_MS = 5 * 1000;
 const VALID_ORDER_STATUSES = ["Pending", "Preparing", "Ready", "Completed"];
 const VALID_USER_ROLES = ["admin", "staff", "chef"];
+const VALID_MENU_CATEGORIES = ["main-course", "snack", "beverages", "dessert"];
+const ORDER_ID_PATTERN = /^ORD-\d{6}$/;
+const RATE_LIMITS = {
+  adminLogin: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 12,
+    minIntervalMs: 1000,
+    message: "Too many login attempts. Please wait a moment and try again.",
+  },
+  orderCreate: {
+    windowMs: 10 * 60 * 1000,
+    maxRequests: 15,
+    minIntervalMs: 2000,
+    message: "Too many order submissions. Please wait a moment before trying again.",
+  },
+  orderLookup: {
+    windowMs: 5 * 60 * 1000,
+    maxRequests: 60,
+    minIntervalMs: 250,
+    message: "Too many order lookups. Please slow down and try again shortly.",
+  },
+};
 const DEFAULT_MENU_ITEMS = [
   {
     name: "Fried Rice",
-    category: "food",
+    category: "main-course",
     price: 25000,
     image: "Assets/images/Fried-Rice.jpg",
     isAvailable: true,
   },
   {
     name: "Chicken Satay",
-    category: "food",
+    category: "main-course",
     price: 30000,
     image: "Assets/images/Satay.jpg",
     isAvailable: true,
   },
   {
+    name: "Seafood Noodles",
+    category: "main-course",
+    price: 29000,
+    image: "Assets/images/Fried-Rice.jpg",
+    isAvailable: true,
+  },
+  {
+    name: "Grilled Gourami",
+    category: "main-course",
+    price: 48000,
+    image: "Assets/images/Grilled Gourami.png",
+    isAvailable: true,
+  },
+  {
+    name: "Chicken Soup",
+    category: "main-course",
+    price: 22000,
+    image: "Assets/images/Fried-Rice.jpg",
+    isAvailable: true,
+  },
+  {
+    name: "Fried Tofu",
+    category: "snack",
+    price: 17000,
+    image: "Assets/images/Fried Tofu.jpg",
+    isAvailable: true,
+  },
+  {
     name: "Iced Tea",
-    category: "drink",
+    category: "beverages",
     price: 10000,
+    image: "Assets/images/Iced-Tea.jpg",
+    isAvailable: true,
+  },
+  {
+    name: "Lemon Tea",
+    category: "beverages",
+    price: 12000,
+    image: "Assets/images/Iced-Tea.jpg",
+    isAvailable: true,
+  },
+  {
+    name: "Iced Americano",
+    category: "beverages",
+    price: 18000,
+    image: "Assets/images/Iced-Tea.jpg",
+    isAvailable: true,
+  },
+  {
+    name: "Avocado Juice",
+    category: "beverages",
+    price: 19000,
+    image: "Assets/images/Avocado Juice.jpg",
+    isAvailable: true,
+  },
+  {
+    name: "Lychee Cooler",
+    category: "beverages",
+    price: 17000,
     image: "Assets/images/Iced-Tea.jpg",
     isAvailable: true,
   },
@@ -45,30 +123,46 @@ const DEFAULT_MENU_ITEMS = [
     image: "Assets/images/cake.jpg",
     isAvailable: true,
   },
+  {
+    name: "Chocolate Pudding",
+    category: "dessert",
+    price: 18000,
+    image: "Assets/images/Chocolate Pudding.jpg",
+    isAvailable: true,
+  },
+  {
+    name: "Vanilla Pudding",
+    category: "dessert",
+    price: 18000,
+    image: "Assets/images/Vanilla Pudding.jpg",
+    isAvailable: true,
+  },
 ];
 const ROLE_PERMISSIONS = {
   admin: {
     manageUsers: true,
     updateOrderStatus: true,
     updateMenuPrice: true,
-    manageMenuCatalog: false,
+    manageMenuCatalog: true,
   },
   staff: {
     manageUsers: false,
     updateOrderStatus: true,
-    updateMenuPrice: true,
+    updateMenuPrice: false,
     manageMenuCatalog: false,
   },
   chef: {
     manageUsers: false,
     updateOrderStatus: true,
     updateMenuPrice: true,
-    manageMenuCatalog: false,
+    manageMenuCatalog: true,
   },
 };
 let databaseInitializationPromise = null;
 let lastMaintenanceRunAt = 0;
+const rateLimitState = new Map();
 
+app.set("trust proxy", true);
 app.use(cors({
   origin: true,
   credentials: true,
@@ -95,6 +189,19 @@ function normalizeUserRole(role) {
   return VALID_USER_ROLES.includes(role) ? role : "staff";
 }
 
+function normalizeMenuCategory(category) {
+  const normalized = String(category || "").trim().toLowerCase();
+  return VALID_MENU_CATEGORIES.includes(normalized) ? normalized : null;
+}
+
+function humanizeMenuCategory(category) {
+  return String(category || "")
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 function serializeOrder(row) {
   if (!row) {
     return row;
@@ -114,6 +221,7 @@ function serializeOrder(row) {
     items: Array.isArray(items) ? items : [],
     status: normalizeOrderStatus(row.status),
     completedAt: row.completed_at || row.completedAt || null,
+    requiresStaffFollowup: Boolean(row.requires_staff_followup ?? row.requiresStaffFollowup),
   };
 }
 
@@ -145,6 +253,105 @@ function serializeAdminUser(row) {
 
 function hasPermission(role, permission) {
   return Boolean(ROLE_PERMISSIONS[normalizeUserRole(role)]?.[permission]);
+}
+
+function getClientIdentifier(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (typeof forwarded === "string" && forwarded.trim()) {
+    return forwarded.split(",")[0].trim();
+  }
+
+  return req.ip || req.socket?.remoteAddress || "unknown";
+}
+
+function buildRateLimitKey(scope, req) {
+  if (scope === "orderCreate") {
+    const tableNumber = String(req.body?.tableNumber || "").trim().toLowerCase() || "no-table";
+    return `${scope}:${getClientIdentifier(req)}:${tableNumber}`;
+  }
+
+  return `${scope}:${getClientIdentifier(req)}`;
+}
+
+function createRateLimiter(scope) {
+  const config = RATE_LIMITS[scope];
+
+  return (req, res, next) => {
+    const key = buildRateLimitKey(scope, req);
+    const now = Date.now();
+    const entry = rateLimitState.get(key) || { timestamps: [], lastRequestAt: 0 };
+    entry.timestamps = entry.timestamps.filter((timestamp) => now - timestamp <= config.windowMs);
+
+    if (config.minIntervalMs && now - entry.lastRequestAt < config.minIntervalMs) {
+      rateLimitState.set(key, entry);
+      return res.status(429).json({ message: config.message });
+    }
+
+    if (entry.timestamps.length >= config.maxRequests) {
+      rateLimitState.set(key, entry);
+      return res.status(429).json({ message: config.message });
+    }
+
+    entry.timestamps.push(now);
+    entry.lastRequestAt = now;
+    rateLimitState.set(key, entry);
+    next();
+  };
+}
+
+function isValidMenuImageReference(value) {
+  const image = String(value || "").trim();
+  return Boolean(image) && /^(https?:\/\/|Assets\/images\/)/i.test(image);
+}
+
+function sanitizeOrderItems(items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return { items: [], totalQuantity: 0, totalPrice: 0 };
+  }
+
+  const sanitizedItems = [];
+  let totalQuantity = 0;
+  let totalPrice = 0;
+
+  for (const item of items) {
+    const name = String(item?.name || "").trim();
+    const price = Number(item?.price);
+    const quantity = Number(item?.quantity);
+
+    if (!name || !Number.isInteger(price) || price < 0 || !Number.isInteger(quantity) || quantity < 1 || quantity > 50) {
+      return { items: [], totalQuantity: 0, totalPrice: 0 };
+    }
+
+    const total = price * quantity;
+    totalQuantity += quantity;
+    totalPrice += total;
+
+    sanitizedItems.push({
+      name,
+      price,
+      quantity,
+      total,
+    });
+  }
+
+  return { items: sanitizedItems, totalQuantity, totalPrice };
+}
+
+async function countActiveAdmins(excludingUserId = null) {
+  const values = ["admin"];
+  let query = `
+    SELECT COUNT(*)::int AS count
+    FROM admin_users
+    WHERE role = $1 AND is_active = TRUE
+  `;
+
+  if (excludingUserId) {
+    values.push(excludingUserId);
+    query += " AND id <> $2";
+  }
+
+  const result = await pool.query(query, values);
+  return result.rows[0]?.count || 0;
 }
 
 function hashSessionToken(token) {
@@ -328,20 +535,36 @@ async function initializeDatabase() {
     ALTER TABLE orders
     ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP WITHOUT TIME ZONE;
 
+    ALTER TABLE orders
+    ADD COLUMN IF NOT EXISTS requires_staff_followup BOOLEAN NOT NULL DEFAULT FALSE;
+
     CREATE INDEX IF NOT EXISTS idx_orders_completed_at ON orders(completed_at);
   `);
 
-  const menuCountResult = await pool.query("SELECT COUNT(*)::int AS count FROM menu_items");
-  const menuCount = menuCountResult.rows[0]?.count || 0;
+  await pool.query(`
+    UPDATE menu_items
+    SET category = CASE
+      WHEN category IN ('food', 'main-course', 'grill', 'noodles', 'soup') THEN 'main-course'
+      WHEN category IN ('drink', 'tea', 'coffee', 'juice') THEN 'beverages'
+      WHEN category = 'snack' THEN 'snack'
+      WHEN category = 'dessert' THEN 'dessert'
+      ELSE category
+    END
+  `);
 
-  if (menuCount === 0) {
-    for (const item of DEFAULT_MENU_ITEMS) {
-      await pool.query(
-        `INSERT INTO menu_items (name, category, price, image, is_available)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [item.name, item.category, item.price, item.image, item.isAvailable]
-      );
+  const existingMenuItemsResult = await pool.query("SELECT name FROM menu_items");
+  const existingMenuNames = new Set(existingMenuItemsResult.rows.map((row) => row.name));
+
+  for (const item of DEFAULT_MENU_ITEMS) {
+    if (existingMenuNames.has(item.name)) {
+      continue;
     }
+
+    await pool.query(
+      `INSERT INTO menu_items (name, category, price, image, is_available)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [item.name, item.category, item.price, item.image, item.isAvailable]
+    );
   }
 }
 
@@ -444,7 +667,7 @@ app.get("/menu", async (req, res) => {
   }
 });
 
-app.post("/admin/login", (req, res) => {
+app.post("/admin/login", createRateLimiter("adminLogin"), (req, res) => {
   (async () => {
     const { username, password } = req.body;
 
@@ -614,12 +837,104 @@ app.post("/admin/users", requireAdminAuth, requirePermission("manageUsers"), asy
   }
 });
 
-app.get("/admin/menu", requireAdminAuth, requirePermission("updateMenuPrice"), async (req, res) => {
+app.patch("/admin/users/:id", requireAdminAuth, requirePermission("manageUsers"), async (req, res) => {
+  try {
+    const targetUserId = Number(req.params.id);
+    const nextRole = normalizeUserRole(req.body.role);
+
+    if (!Number.isInteger(targetUserId) || targetUserId < 1) {
+      return res.status(400).json({ message: "Invalid user id." });
+    }
+
+    if (!req.body.role) {
+      return res.status(400).json({ message: "Role is required." });
+    }
+
+    const existingUserResult = await pool.query(
+      `SELECT id, username, role, is_active
+       FROM admin_users
+       WHERE id = $1`,
+      [targetUserId]
+    );
+
+    if (existingUserResult.rows.length === 0) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const existingUser = existingUserResult.rows[0];
+
+    if (existingUser.id === req.adminSession.admin_user_id) {
+      return res.status(403).json({ message: "You cannot change your own role." });
+    }
+
+    if (normalizeUserRole(existingUser.role) === "admin" && nextRole !== "admin") {
+      const otherActiveAdmins = await countActiveAdmins(existingUser.id);
+      if (otherActiveAdmins === 0) {
+        return res.status(400).json({ message: "You cannot change the last active admin to a different role." });
+      }
+    }
+
+    const result = await pool.query(
+      `UPDATE admin_users
+       SET role = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING id, username, full_name, role, is_active, created_at, updated_at, last_login_at`,
+      [nextRole, targetUserId]
+    );
+
+    res.json(serializeAdminUser(result.rows[0]));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to update user role." });
+  }
+});
+
+app.delete("/admin/users/:id", requireAdminAuth, requirePermission("manageUsers"), async (req, res) => {
+  try {
+    const targetUserId = Number(req.params.id);
+
+    if (!Number.isInteger(targetUserId) || targetUserId < 1) {
+      return res.status(400).json({ message: "Invalid user id." });
+    }
+
+    if (targetUserId === req.adminSession.admin_user_id) {
+      return res.status(403).json({ message: "You cannot remove your own account." });
+    }
+
+    const existingUserResult = await pool.query(
+      `SELECT id, role, is_active
+       FROM admin_users
+       WHERE id = $1`,
+      [targetUserId]
+    );
+
+    if (existingUserResult.rows.length === 0) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const existingUser = existingUserResult.rows[0];
+
+    if (normalizeUserRole(existingUser.role) === "admin" && existingUser.is_active) {
+      const otherActiveAdmins = await countActiveAdmins(existingUser.id);
+      if (otherActiveAdmins === 0) {
+        return res.status(400).json({ message: "You cannot remove the last active admin." });
+      }
+    }
+
+    await pool.query("DELETE FROM admin_users WHERE id = $1", [targetUserId]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to remove user." });
+  }
+});
+
+app.get("/admin/menu", requireAdminAuth, requirePermission("manageMenuCatalog"), async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT *
        FROM menu_items
-       ORDER BY category ASC, name ASC`
+       ORDER BY is_available DESC, category ASC, name ASC`
     );
 
     res.json(result.rows.map(serializeMenuItem));
@@ -631,17 +946,22 @@ app.get("/admin/menu", requireAdminAuth, requirePermission("updateMenuPrice"), a
 
 app.post("/admin/menu", requireAdminAuth, requirePermission("manageMenuCatalog"), async (req, res) => {
   try {
-    const { name, category, price, image } = req.body;
+    const name = String(req.body.name || "").trim();
+    const category = normalizeMenuCategory(req.body.category);
+    const image = String(req.body.image || "").trim();
+    const price = Number(req.body.price);
 
-    if (!name || !category || !image || Number.isNaN(Number(price))) {
-      return res.status(400).json({ message: "Name, category, image, and price are required." });
+    if (!name || !category || !isValidMenuImageReference(image) || !Number.isInteger(price) || price < 0) {
+      return res.status(400).json({
+        message: "Name, valid category, image path or URL, and a non-negative integer price are required.",
+      });
     }
 
     const result = await pool.query(
       `INSERT INTO menu_items (name, category, price, image, is_available, updated_at)
        VALUES ($1, $2, $3, $4, TRUE, NOW())
        RETURNING *`,
-      [name.trim(), category.trim().toLowerCase(), Number(price), image.trim()]
+      [name, category, price, image]
     );
 
     res.status(201).json(serializeMenuItem(result.rows[0]));
@@ -655,20 +975,27 @@ app.post("/admin/menu", requireAdminAuth, requirePermission("manageMenuCatalog")
   }
 });
 
-app.patch("/admin/menu/:id/price", requireAdminAuth, requirePermission("updateMenuPrice"), async (req, res) => {
+app.patch("/admin/menu/:id", requireAdminAuth, requirePermission("manageMenuCatalog"), async (req, res) => {
   try {
     const price = Number(req.body.price);
+    const category = normalizeMenuCategory(req.body.category);
 
     if (!Number.isInteger(price) || price < 0) {
       return res.status(400).json({ message: "Price must be a non-negative integer." });
     }
 
+    if (!category) {
+      return res.status(400).json({ message: "Please choose a valid menu category." });
+    }
+
     const result = await pool.query(
       `UPDATE menu_items
-       SET price = $1, updated_at = NOW()
-       WHERE id = $2
+       SET price = $1,
+           category = $2,
+           updated_at = NOW()
+       WHERE id = $3
        RETURNING *`,
-      [price, req.params.id]
+      [price, category, req.params.id]
     );
 
     if (result.rows.length === 0) {
@@ -678,25 +1005,29 @@ app.patch("/admin/menu/:id/price", requireAdminAuth, requirePermission("updateMe
     res.json(serializeMenuItem(result.rows[0]));
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Failed to update price." });
+    res.status(500).json({ message: "Failed to update menu details." });
   }
 });
 
-app.delete("/admin/menu/:id", requireAdminAuth, requirePermission("manageMenuCatalog"), async (req, res) => {
+app.patch("/admin/menu/:id/availability", requireAdminAuth, requirePermission("manageMenuCatalog"), async (req, res) => {
   try {
+    const isAvailable = Boolean(req.body.isAvailable);
     const result = await pool.query(
-      "DELETE FROM menu_items WHERE id = $1 RETURNING id",
-      [req.params.id]
+      `UPDATE menu_items
+       SET is_available = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [isAvailable, req.params.id]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "Menu item not found." });
     }
 
-    res.json({ success: true });
+    res.json(serializeMenuItem(result.rows[0]));
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Failed to delete menu item." });
+    res.status(500).json({ message: "Failed to update menu availability." });
   }
 });
 
@@ -779,27 +1110,57 @@ app.get("/admin/orders/:id/history", requireAdminAuth, requirePermission("update
   }
 });
 
-app.post("/orders", async (req, res) => {
+app.post("/orders", createRateLimiter("orderCreate"), async (req, res) => {
   try {
-    const { orderId, tableNumber, items, totalPrice, status, createdAt } = req.body;
+    const { orderId, tableNumber, items, createdAt } = req.body;
+    const normalizedTableNumber = String(tableNumber || "").trim();
+    const sanitizedOrder = sanitizeOrderItems(items);
+
+    if (!ORDER_ID_PATTERN.test(String(orderId || ""))) {
+      return res.status(400).json({ message: "Invalid order id." });
+    }
+
+    if (!normalizedTableNumber || normalizedTableNumber.length > 50) {
+      return res.status(400).json({ message: "A valid table number is required." });
+    }
+
+    if (sanitizedOrder.items.length === 0) {
+      return res.status(400).json({ message: "Please submit at least one valid menu item." });
+    }
+
+    if (sanitizedOrder.totalQuantity > 100) {
+      return res.status(400).json({ message: "Order quantity is too large. Please split it with staff assistance." });
+    }
+
+    const requiresStaffFollowup = sanitizedOrder.items.some((item) => item.quantity > 20) || sanitizedOrder.totalQuantity > 30;
 
     const result = await pool.query(
-      `INSERT INTO orders (order_id, table_number, items, total_price, status, created_at)
-       VALUES ($1, $2, $3, $4, $5, COALESCE($6, NOW()))
+      `INSERT INTO orders (order_id, table_number, items, total_price, status, created_at, requires_staff_followup)
+       VALUES ($1, $2, $3, $4, $5, COALESCE($6, NOW()), $7)
        RETURNING *`,
-      [orderId, tableNumber, JSON.stringify(items), totalPrice, normalizeOrderStatus(status), createdAt]
+      [orderId, normalizedTableNumber, JSON.stringify(sanitizedOrder.items), sanitizedOrder.totalPrice, "Pending", createdAt, requiresStaffFollowup]
     );
 
     res.status(201).json(serializeOrder(result.rows[0]));
   } catch (error) {
     console.error(error);
+    if (String(error.message).includes("duplicate key")) {
+      return res.status(409).json({ message: "That order id already exists. Please try again." });
+    }
+
     res.status(500).json({ message: "Failed to create order." });
   }
 });
 
-app.get("/orders/:id", async (req, res) => {
+app.get("/orders/:id", createRateLimiter("orderLookup"), async (req, res) => {
   try {
-    const order = await findOrderById(req.params.id);
+    const requestedOrderId = String(req.params.id || "").trim();
+
+    if (!ORDER_ID_PATTERN.test(requestedOrderId)) {
+      return res.status(400).json({ message: "Invalid order id." });
+    }
+
+    const order = await findOrderById(requestedOrderId);
 
     if (!order) {
       return res.status(404).json({ message: "Order not found." });

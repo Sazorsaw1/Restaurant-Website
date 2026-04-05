@@ -6,13 +6,18 @@ const adminOrdersList = document.getElementById("adminOrdersList");
 const refreshOrdersBtn = document.getElementById("refreshOrdersBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const menuSectionHint = document.getElementById("menuSectionHint");
+const menuPanelTrigger = document.getElementById("menuPanelTrigger");
 const menuCreateForm = document.getElementById("menuCreateForm");
 const menuCreateButton = document.getElementById("menuCreateButton");
+const openMenuCreateModalBtn = document.getElementById("openMenuCreateModal");
+const closeMenuCreateModalBtn = document.getElementById("closeMenuCreateModal");
+const menuCreateModal = document.getElementById("menuCreateModal");
 const menuManagementList = document.getElementById("menuManagementList");
 const usersPanelTrigger = document.getElementById("usersPanelTrigger");
 const userManagementList = document.getElementById("userManagementList");
 const createUserForm = document.getElementById("createUserForm");
 const createUserButton = document.getElementById("createUserButton");
+const sidebarSessionRole = document.getElementById("sidebarSessionRole");
 const adminPanelTriggers = Array.from(document.querySelectorAll("[data-admin-panel-trigger]"));
 const adminPanels = Array.from(document.querySelectorAll("[data-admin-panel]"));
 
@@ -20,9 +25,48 @@ const statTotalOrders = document.getElementById("statTotalOrders");
 const statPendingOrders = document.getElementById("statPendingOrders");
 const statPreparingOrders = document.getElementById("statPreparingOrders");
 const statClosedOrders = document.getElementById("statClosedOrders");
+const MENU_CATEGORIES = [
+  { value: "main-course", label: "Main Course" },
+  { value: "snack", label: "Snack" },
+  { value: "beverages", label: "Beverages" },
+  { value: "dessert", label: "Dessert" },
+];
 
 let currentSession = null;
-let activeAdminPanel = "orders";
+let activeAdminPanel = "overview";
+
+function setPanelTriggerButtonState(button, isActive) {
+  button.classList.toggle("bg-white/15", !isActive);
+  button.classList.toggle("text-white", !isActive);
+  button.classList.toggle("hover:bg-white/20", !isActive);
+  button.classList.toggle("bg-white", isActive);
+  button.classList.toggle("text-slate-900", isActive);
+  button.classList.toggle("shadow-sm", isActive);
+  button.classList.toggle("border-white", isActive);
+  button.classList.toggle("hover:bg-white", isActive);
+
+  button.classList.toggle("border", !isActive);
+  button.classList.toggle("border-white/15", !isActive);
+  button.classList.toggle("bg-transparent", !isActive);
+  button.classList.toggle("text-slate-200", !isActive);
+  button.classList.toggle("hover:bg-white/10", !isActive);
+
+  if (isActive) {
+    button.classList.remove("bg-transparent", "text-slate-200", "hover:bg-white/10");
+  } else {
+    button.classList.remove("bg-white", "text-slate-900", "shadow-sm", "border-white", "hover:bg-white");
+  }
+}
+
+function getMenuCategoryOptions(selectedCategory) {
+  return MENU_CATEGORIES.map((category) => `
+    <option value="${category.value}" ${category.value === selectedCategory ? "selected" : ""}>${category.label}</option>
+  `).join("");
+}
+
+function formatCategoryLabel(category) {
+  return MENU_CATEGORIES.find((entry) => entry.value === category)?.label || category;
+}
 
 function showDashboardMessage(message, isError = false) {
   dashboardMessage.textContent = message;
@@ -58,7 +102,11 @@ function updateStats(orders) {
 
 function setActiveAdminPanel(panelName) {
   const permissions = currentSession?.permissions || {};
-  const nextPanel = panelName === "users" && !permissions.manageUsers ? "orders" : panelName;
+  const nextPanel = panelName === "users" && !permissions.manageUsers
+    ? "orders"
+    : panelName === "menu" && !permissions.manageMenuCatalog
+      ? "orders"
+      : panelName;
   activeAdminPanel = nextPanel;
 
   adminPanels.forEach((panel) => {
@@ -66,26 +114,40 @@ function setActiveAdminPanel(panelName) {
   });
 
   adminPanelTriggers.forEach((button) => {
-    const isActive = button.dataset.adminPanelTrigger === nextPanel;
-    button.className = isActive
-      ? "admin-panel-trigger rounded-xl bg-slate-900 px-4 py-2 font-medium text-white transition hover:bg-slate-800"
-      : "admin-panel-trigger rounded-xl border border-slate-300 px-4 py-2 font-medium text-slate-700 transition hover:bg-slate-50";
+    setPanelTriggerButtonState(button, button.dataset.adminPanelTrigger === nextPanel);
   });
 }
 
 function applyRoleView() {
   const permissions = currentSession?.permissions || {};
 
+  menuPanelTrigger.classList.toggle("hidden", !permissions.manageMenuCatalog);
   usersPanelTrigger.classList.toggle("hidden", !permissions.manageUsers);
-  menuCreateForm.classList.add("hidden");
-  menuSectionHint.textContent = "Add/remove menu is disabled for now. Admin, staff, and chef can update prices for existing items.";
+  openMenuCreateModalBtn.classList.toggle("hidden", !permissions.manageMenuCatalog);
+  sidebarSessionRole.textContent = permissions.manageUsers
+    ? "Admin session"
+    : permissions.manageMenuCatalog
+      ? "Chef session"
+      : "Staff session";
+  menuSectionHint.textContent = permissions.manageMenuCatalog
+    ? "Chef and admin can add menu items with an image path or URL. Removing uses archive/restore so items can be safely brought back later."
+    : "Menu management is limited to chef and admin accounts.";
 
-  if (!permissions.manageUsers && activeAdminPanel === "users") {
-    setActiveAdminPanel("orders");
+  if ((!permissions.manageUsers && activeAdminPanel === "users") || (!permissions.manageMenuCatalog && activeAdminPanel === "menu")) {
+    setActiveAdminPanel("overview");
     return;
   }
 
   setActiveAdminPanel(activeAdminPanel);
+}
+
+function openMenuCreateModal() {
+  menuCreateForm.reset();
+  toggleModal(menuCreateModal, true);
+}
+
+function closeMenuCreateModal() {
+  toggleModal(menuCreateModal, false);
 }
 
 function renderOrders(orders) {
@@ -120,10 +182,15 @@ function renderOrders(orders) {
             </div>
           </div>
 
-          <div class="w-full xl:max-w-xs">
-            <label for="status-${orderId}" class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+        <div class="w-full xl:max-w-xs">
+          ${order.requires_staff_followup || order.requiresStaffFollowup ? `
+            <div class="mb-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-medium text-orange-700">
+              Large or detailed order: a staff member should go to this table for specifications.
+            </div>
+          ` : ""}
+          <label for="status-${orderId}" class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
               Update Status
-            </label>
+          </label>
             <div class="flex gap-2">
               <select id="status-${orderId}" data-order-id="${orderId}" class="flex-1 rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
                 ${ORDER_STATUSES.map((status) => `<option value="${status}" ${status === order.status ? "selected" : ""}>${status}</option>`).join("")}
@@ -169,22 +236,37 @@ function renderMenuItems(items) {
     return;
   }
 
+  const canManageCatalog = Boolean(currentSession?.permissions?.manageMenuCatalog);
   menuManagementList.innerHTML = items.map((item) => `
     <article class="rounded-2xl border border-slate-200 p-4 shadow-sm">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div class="flex items-center gap-4">
           <img src="${item.image}" alt="${item.name}" class="h-16 w-16 rounded-2xl object-cover">
           <div>
-            <p class="font-semibold text-slate-900">${item.name}</p>
-            <p class="text-sm capitalize text-slate-500">${item.category}</p>
+            <div class="flex flex-wrap items-center gap-2">
+              <p class="font-semibold text-slate-900">${item.name}</p>
+              <span class="rounded-full px-2 py-1 text-xs font-semibold ${item.isAvailable ? "bg-green-100 text-green-700" : "bg-slate-200 text-slate-600"}">
+                ${item.isAvailable ? "Active" : "Archived"}
+              </span>
+            </div>
+            <p class="text-sm text-slate-500">${formatCategoryLabel(item.category)}</p>
+            <p class="text-xs text-slate-400">${item.image}</p>
           </div>
         </div>
 
         <div class="flex flex-col gap-3 md:flex-row md:items-center">
+          <select data-category-id="${item.id}" class="rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
+            ${getMenuCategoryOptions(item.category)}
+          </select>
           <input data-price-id="${item.id}" type="number" min="0" value="${item.price}" class="rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
-          <button data-save-price-id="${item.id}" class="rounded-xl bg-slate-900 px-4 py-2 font-medium text-white transition hover:bg-slate-800">
-            Save Price
+          <button data-save-menu-id="${item.id}" class="rounded-xl bg-slate-900 px-4 py-2 font-medium text-white transition hover:bg-slate-800">
+            Save Details
           </button>
+          ${canManageCatalog ? `
+            <button data-toggle-availability-id="${item.id}" data-next-availability="${item.isAvailable ? "false" : "true"}" class="rounded-xl px-4 py-2 font-medium text-white transition ${item.isAvailable ? "bg-red-500 hover:bg-red-600" : "bg-emerald-500 hover:bg-emerald-600"}">
+              ${item.isAvailable ? "Archive Item" : "Restore Item"}
+            </button>
+          ` : ""}
         </div>
       </div>
     </article>
@@ -206,20 +288,47 @@ function renderUsers(users) {
     return;
   }
 
-  userManagementList.innerHTML = users.map((user) => `
+  userManagementList.innerHTML = users.map((user) => {
+    const isSelf = Number(user.id) === Number(currentSession?.user?.id);
+    const helperText = isSelf
+      ? "Your account cannot delete itself or change its own role."
+      : normalizeRoleLabel(user.role) === "admin"
+        ? "Admin accounts can only be changed by another admin."
+        : "You can update this user's role or remove the account.";
+
+    return `
     <article class="rounded-2xl border border-slate-200 p-4">
-      <div class="flex items-center justify-between gap-4">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p class="font-semibold text-slate-900">${user.fullName || user.username}</p>
           <p class="text-sm text-slate-500">@${user.username}</p>
+          <p class="mt-2 text-xs text-slate-400">${helperText}</p>
         </div>
-        <div class="text-right">
-          <p class="text-sm font-semibold uppercase tracking-wide text-orange-600">${user.role}</p>
-          <p class="text-xs text-slate-400">${user.isActive ? "Active" : "Inactive"}</p>
+        <div class="flex flex-col gap-3 md:flex-row md:items-center">
+          <select data-user-role-id="${user.id}" class="rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200" ${isSelf ? "disabled" : ""}>
+            <option value="staff" ${user.role === "staff" ? "selected" : ""}>Staff</option>
+            <option value="chef" ${user.role === "chef" ? "selected" : ""}>Chef</option>
+            <option value="admin" ${user.role === "admin" ? "selected" : ""}>Admin</option>
+          </select>
+          <button data-save-user-id="${user.id}" class="rounded-xl bg-slate-900 px-4 py-2 font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300" ${isSelf ? "disabled" : ""}>
+            Save Role
+          </button>
+          <button data-delete-user-id="${user.id}" class="rounded-xl bg-red-500 px-4 py-2 font-medium text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-200" ${isSelf ? "disabled" : ""}>
+            Remove User
+          </button>
+          <div class="text-right">
+            <p class="text-sm font-semibold uppercase tracking-wide text-orange-600">${user.role}</p>
+            <p class="text-xs text-slate-400">${user.isActive ? "Active" : "Inactive"}</p>
+          </div>
         </div>
       </div>
     </article>
-  `).join("");
+  `;
+  }).join("");
+}
+
+function normalizeRoleLabel(role) {
+  return String(role || "").trim().toLowerCase();
 }
 
 async function ensureAdminSession() {
@@ -260,6 +369,11 @@ async function loadOrders() {
 }
 
 async function loadMenuManagement() {
+  if (!currentSession?.permissions?.manageMenuCatalog) {
+    menuManagementList.innerHTML = "";
+    return [];
+  }
+
   const response = await apiFetch("/admin/menu", {
     method: "GET",
   });
@@ -299,7 +413,7 @@ async function refreshDashboard() {
   try {
     await Promise.all([
       loadOrders(),
-      loadMenuManagement(),
+      currentSession?.permissions?.manageMenuCatalog ? loadMenuManagement() : Promise.resolve([]),
       loadUsers(),
     ]);
   } catch (error) {
@@ -347,29 +461,44 @@ adminOrdersList.addEventListener("click", async (event) => {
 });
 
 menuManagementList.addEventListener("click", async (event) => {
-  const savePriceId = event.target.dataset.savePriceId;
+  const saveMenuId = event.target.dataset.saveMenuId;
+  const toggleAvailabilityId = event.target.dataset.toggleAvailabilityId;
 
-  if (!savePriceId) {
+  if (!saveMenuId && !toggleAvailabilityId) {
     return;
   }
 
   const originalText = event.target.textContent;
   event.target.disabled = true;
-  event.target.textContent = "Saving...";
+  event.target.textContent = saveMenuId ? "Saving..." : "Updating...";
 
   try {
-    const input = document.querySelector(`[data-price-id="${savePriceId}"]`);
-    const response = await apiFetch(`/admin/menu/${savePriceId}/price`, {
-      method: "PATCH",
-      body: JSON.stringify({ price: Number(input.value) }),
-    });
+    let response;
+
+    if (saveMenuId) {
+      const priceInput = document.querySelector(`[data-price-id="${saveMenuId}"]`);
+      const categorySelect = document.querySelector(`[data-category-id="${saveMenuId}"]`);
+      response = await apiFetch(`/admin/menu/${saveMenuId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          price: Number(priceInput.value),
+          category: categorySelect.value,
+        }),
+      });
+    } else {
+      response = await apiFetch(`/admin/menu/${toggleAvailabilityId}/availability`, {
+        method: "PATCH",
+        body: JSON.stringify({ isAvailable: event.target.dataset.nextAvailability === "true" }),
+      });
+    }
+
     const data = await readJsonResponse(response);
 
     if (!response.ok) {
       throw new Error(data?.message || "Menu update failed.");
     }
 
-    showDashboardMessage("Menu price updated.");
+    showDashboardMessage(saveMenuId ? "Menu details updated." : `Menu item ${data.isAvailable ? "restored" : "archived"}.`);
     await refreshDashboard();
   } catch (error) {
     console.error(error);
@@ -382,7 +511,37 @@ menuManagementList.addEventListener("click", async (event) => {
 
 menuCreateForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  showDashboardMessage("Adding or removing menu items is disabled for now.", true);
+  const formData = new FormData(menuCreateForm);
+  menuCreateButton.disabled = true;
+  menuCreateButton.textContent = "Adding...";
+
+  try {
+    const response = await apiFetch("/admin/menu", {
+      method: "POST",
+      body: JSON.stringify({
+        name: String(formData.get("name") || "").trim(),
+        category: String(formData.get("category") || "").trim(),
+        price: Number(formData.get("price")),
+        image: String(formData.get("image") || "").trim(),
+      }),
+    });
+    const data = await readJsonResponse(response);
+
+    if (!response.ok) {
+      throw new Error(data?.message || "Failed to add menu item.");
+    }
+
+    menuCreateForm.reset();
+    closeMenuCreateModal();
+    showDashboardMessage(`Added menu item ${data.name}.`);
+    await refreshDashboard();
+  } catch (error) {
+    console.error(error);
+    showDashboardMessage(error.message || "Failed to add menu item.", true);
+  } finally {
+    menuCreateButton.disabled = false;
+    menuCreateButton.textContent = "Add Menu Item";
+  }
 });
 
 createUserForm.addEventListener("submit", async (event) => {
@@ -420,7 +579,70 @@ createUserForm.addEventListener("submit", async (event) => {
   }
 });
 
+userManagementList.addEventListener("click", async (event) => {
+  const saveUserId = event.target.dataset.saveUserId;
+  const deleteUserId = event.target.dataset.deleteUserId;
+
+  if (!saveUserId && !deleteUserId) {
+    return;
+  }
+
+  if (deleteUserId && !window.confirm("Remove this user account? This cannot be undone.")) {
+    return;
+  }
+
+  const originalText = event.target.textContent;
+  event.target.disabled = true;
+  event.target.textContent = saveUserId ? "Saving..." : "Removing...";
+
+  try {
+    let response;
+
+    if (saveUserId) {
+      const roleSelect = document.querySelector(`[data-user-role-id="${saveUserId}"]`);
+      response = await apiFetch(`/admin/users/${saveUserId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ role: roleSelect.value }),
+      });
+    } else {
+      response = await apiFetch(`/admin/users/${deleteUserId}`, {
+        method: "DELETE",
+      });
+    }
+
+    const data = await readJsonResponse(response);
+
+    if (!response.ok) {
+      throw new Error(data?.message || "Failed to update the user.");
+    }
+
+    showDashboardMessage(saveUserId ? "User role updated." : "User removed.");
+    await refreshDashboard();
+  } catch (error) {
+    console.error(error);
+    showDashboardMessage(error.message || "Failed to update the user.", true);
+  } finally {
+    event.target.disabled = false;
+    event.target.textContent = originalText;
+  }
+});
+
 refreshOrdersBtn.addEventListener("click", refreshDashboard);
+
+openMenuCreateModalBtn.addEventListener("click", openMenuCreateModal);
+closeMenuCreateModalBtn.addEventListener("click", closeMenuCreateModal);
+
+menuCreateModal.addEventListener("click", (event) => {
+  if (event.target === menuCreateModal) {
+    closeMenuCreateModal();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && menuCreateModal.classList.contains("flex")) {
+    closeMenuCreateModal();
+  }
+});
 
 adminPanelTriggers.forEach((button) => {
   button.addEventListener("click", () => {
@@ -457,3 +679,5 @@ logoutBtn.addEventListener("click", async () => {
     window.location.href = `${API_BASE_URL}/admin-login`;
   }
 })();
+
+closeMenuCreateModal();

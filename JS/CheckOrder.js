@@ -53,6 +53,11 @@ async function handleCheckOrder() {
     return;
   }
 
+  if (!/^\d{6}$/.test(input)) {
+    alert("Please enter the 6-digit number from your Order ID.");
+    return;
+  }
+
   const orderId = `ORD-${input}`;
   orderResult.innerHTML = `<p class="text-slate-500">Checking order...</p>`;
   checkOrderBtn.disabled = true;
