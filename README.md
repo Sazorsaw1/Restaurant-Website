@@ -16,8 +16,12 @@ A full-stack restaurant ordering app with a customer-facing menu and a separate 
 - Role-based access for `admin`, `staff`, and `chef`
 - Update customer order statuses
 - Update prices for existing menu items
-- Admin-only user creation for staff dashboard accounts
+- Chef and admin can add menu items with an image path or URL
+- Chef and admin can archive or restore menu items without deleting the database record
+- Large or detailed orders show a staff-follow-up notice after submission and inside the dashboard
+- Admin-only user management for staff dashboard accounts
 - Completed orders are automatically deleted after about 30 seconds for testing
+- Basic anti-spam protection is enabled for admin login, order submission, and order lookup requests
 
 ### Data
 - Orders are stored in Neon Postgres
@@ -146,11 +150,9 @@ npm run create:admin -- admin StrongPassword123 "Restaurant Admin"
 
 ## Staff Roles
 
-- `admin`: can create users, update order statuses, and change prices
+- `admin`: can create users, remove users, change another user's role, update order statuses, change prices, and manage the menu catalog
 - `staff`: can update order statuses and change prices
-- `chef`: currently has the same permissions as `staff`
-
-Note: add/remove menu items is temporarily disabled.
+- `chef`: can update order statuses, change prices, and add, archive, or restore menu items
 
 ## API Overview
 
@@ -168,14 +170,19 @@ Note: add/remove menu items is temporarily disabled.
 - `PATCH /admin/orders/:id/status`
 - `GET /admin/orders/:id/history`
 - `GET /admin/menu`
+- `POST /admin/menu`
 - `PATCH /admin/menu/:id/price`
+- `PATCH /admin/menu/:id/availability`
 - `GET /admin/users`
 - `POST /admin/users`
+- `PATCH /admin/users/:id`
+- `DELETE /admin/users/:id`
 
 ## Security Notes
 
 - Staff passwords are hashed before being stored in the database
 - Admin sessions use `HttpOnly` cookies
+- Basic request throttling is enabled for admin login, order creation, and order lookup routes
 - `.env` files and common key files are ignored by git
 - Never put real secrets in `README.md`, `.env.example`, or committed source files
 
@@ -184,6 +191,7 @@ Note: add/remove menu items is temporarily disabled.
 - Customer page does not expose a staff login shortcut
 - Staff dashboard is separated from the customer page
 - Menu images are referenced by asset path strings stored in the database
+- New menu items currently use an image path or URL instead of file upload storage
 - Completed orders are auto-purged after about 30 seconds only for testing and should be adjusted before production
 - The repository now contains Vercel deployment configuration at the repo root
 - `main` should be used for releases, while `Dev1.1` should be used for preview/testing work

@@ -24,6 +24,17 @@ const statClosedOrders = document.getElementById("statClosedOrders");
 let currentSession = null;
 let activeAdminPanel = "orders";
 
+function setPanelTriggerButtonState(button, isActive) {
+  button.classList.toggle("bg-slate-900", isActive);
+  button.classList.toggle("text-white", isActive);
+  button.classList.toggle("hover:bg-slate-800", isActive);
+
+  button.classList.toggle("border", !isActive);
+  button.classList.toggle("border-slate-300", !isActive);
+  button.classList.toggle("text-slate-700", !isActive);
+  button.classList.toggle("hover:bg-slate-50", !isActive);
+}
+
 function showDashboardMessage(message, isError = false) {
   dashboardMessage.textContent = message;
   dashboardMessage.className = `rounded-xl border px-4 py-3 text-sm ${isError ? "border-red-300 bg-red-50 text-red-600" : "border-green-300 bg-green-50 text-green-700"}`;
@@ -66,10 +77,7 @@ function setActiveAdminPanel(panelName) {
   });
 
   adminPanelTriggers.forEach((button) => {
-    const isActive = button.dataset.adminPanelTrigger === nextPanel;
-    button.className = isActive
-      ? "admin-panel-trigger rounded-xl bg-slate-900 px-4 py-2 font-medium text-white transition hover:bg-slate-800"
-      : "admin-panel-trigger rounded-xl border border-slate-300 px-4 py-2 font-medium text-slate-700 transition hover:bg-slate-50";
+    setPanelTriggerButtonState(button, button.dataset.adminPanelTrigger === nextPanel);
   });
 }
 
@@ -77,8 +85,10 @@ function applyRoleView() {
   const permissions = currentSession?.permissions || {};
 
   usersPanelTrigger.classList.toggle("hidden", !permissions.manageUsers);
-  menuCreateForm.classList.add("hidden");
-  menuSectionHint.textContent = "Add/remove menu is disabled for now. Admin, staff, and chef can update prices for existing items.";
+  menuCreateForm.classList.toggle("hidden", !permissions.manageMenuCatalog);
+  menuSectionHint.textContent = permissions.manageMenuCatalog
+    ? "Chef and admin can add menu items with an image path or URL. Removing uses archive/restore so items can be safely brought back later."
+    : "You can update prices here. Menu add/remove is limited to chef and admin accounts.";
 
   if (!permissions.manageUsers && activeAdminPanel === "users") {
     setActiveAdminPanel("orders");
@@ -120,10 +130,15 @@ function renderOrders(orders) {
             </div>
           </div>
 
-          <div class="w-full xl:max-w-xs">
-            <label for="status-${orderId}" class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+        <div class="w-full xl:max-w-xs">
+          ${order.requires_staff_followup || order.requiresStaffFollowup ? `
+            <div class="mb-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-medium text-orange-700">
+              Large or detailed order: a staff member should go to this table for specifications.
+            </div>
+          ` : ""}
+          <label for="status-${orderId}" class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
               Update Status
-            </label>
+          </label>
             <div class="flex gap-2">
               <select id="status-${orderId}" data-order-id="${orderId}" class="flex-1 rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
                 ${ORDER_STATUSES.map((status) => `<option value="${status}" ${status === order.status ? "selected" : ""}>${status}</option>`).join("")}
@@ -169,14 +184,21 @@ function renderMenuItems(items) {
     return;
   }
 
+  const canManageCatalog = Boolean(currentSession?.permissions?.manageMenuCatalog);
   menuManagementList.innerHTML = items.map((item) => `
     <article class="rounded-2xl border border-slate-200 p-4 shadow-sm">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div class="flex items-center gap-4">
           <img src="${item.image}" alt="${item.name}" class="h-16 w-16 rounded-2xl object-cover">
           <div>
-            <p class="font-semibold text-slate-900">${item.name}</p>
+            <div class="flex flex-wrap items-center gap-2">
+              <p class="font-semibold text-slate-900">${item.name}</p>
+              <span class="rounded-full px-2 py-1 text-xs font-semibold ${item.isAvailable ? "bg-green-100 text-green-700" : "bg-slate-200 text-slate-600"}">
+                ${item.isAvailable ? "Active" : "Archived"}
+              </span>
+            </div>
             <p class="text-sm capitalize text-slate-500">${item.category}</p>
+            <p class="text-xs text-slate-400">${item.image}</p>
           </div>
         </div>
 
@@ -185,6 +207,11 @@ function renderMenuItems(items) {
           <button data-save-price-id="${item.id}" class="rounded-xl bg-slate-900 px-4 py-2 font-medium text-white transition hover:bg-slate-800">
             Save Price
           </button>
+          ${canManageCatalog ? `
+            <button data-toggle-availability-id="${item.id}" data-next-availability="${item.isAvailable ? "false" : "true"}" class="rounded-xl px-4 py-2 font-medium text-white transition ${item.isAvailable ? "bg-red-500 hover:bg-red-600" : "bg-emerald-500 hover:bg-emerald-600"}">
+              ${item.isAvailable ? "Archive Item" : "Restore Item"}
+            </button>
+          ` : ""}
         </div>
       </div>
     </article>
@@ -206,20 +233,47 @@ function renderUsers(users) {
     return;
   }
 
-  userManagementList.innerHTML = users.map((user) => `
+  userManagementList.innerHTML = users.map((user) => {
+    const isSelf = Number(user.id) === Number(currentSession?.user?.id);
+    const helperText = isSelf
+      ? "Your account cannot delete itself or change its own role."
+      : normalizeRoleLabel(user.role) === "admin"
+        ? "Admin accounts can only be changed by another admin."
+        : "You can update this user's role or remove the account.";
+
+    return `
     <article class="rounded-2xl border border-slate-200 p-4">
-      <div class="flex items-center justify-between gap-4">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p class="font-semibold text-slate-900">${user.fullName || user.username}</p>
           <p class="text-sm text-slate-500">@${user.username}</p>
+          <p class="mt-2 text-xs text-slate-400">${helperText}</p>
         </div>
-        <div class="text-right">
-          <p class="text-sm font-semibold uppercase tracking-wide text-orange-600">${user.role}</p>
-          <p class="text-xs text-slate-400">${user.isActive ? "Active" : "Inactive"}</p>
+        <div class="flex flex-col gap-3 md:flex-row md:items-center">
+          <select data-user-role-id="${user.id}" class="rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200" ${isSelf ? "disabled" : ""}>
+            <option value="staff" ${user.role === "staff" ? "selected" : ""}>Staff</option>
+            <option value="chef" ${user.role === "chef" ? "selected" : ""}>Chef</option>
+            <option value="admin" ${user.role === "admin" ? "selected" : ""}>Admin</option>
+          </select>
+          <button data-save-user-id="${user.id}" class="rounded-xl bg-slate-900 px-4 py-2 font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300" ${isSelf ? "disabled" : ""}>
+            Save Role
+          </button>
+          <button data-delete-user-id="${user.id}" class="rounded-xl bg-red-500 px-4 py-2 font-medium text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-200" ${isSelf ? "disabled" : ""}>
+            Remove User
+          </button>
+          <div class="text-right">
+            <p class="text-sm font-semibold uppercase tracking-wide text-orange-600">${user.role}</p>
+            <p class="text-xs text-slate-400">${user.isActive ? "Active" : "Inactive"}</p>
+          </div>
         </div>
       </div>
     </article>
-  `).join("");
+  `;
+  }).join("");
+}
+
+function normalizeRoleLabel(role) {
+  return String(role || "").trim().toLowerCase();
 }
 
 async function ensureAdminSession() {
@@ -348,28 +402,39 @@ adminOrdersList.addEventListener("click", async (event) => {
 
 menuManagementList.addEventListener("click", async (event) => {
   const savePriceId = event.target.dataset.savePriceId;
+  const toggleAvailabilityId = event.target.dataset.toggleAvailabilityId;
 
-  if (!savePriceId) {
+  if (!savePriceId && !toggleAvailabilityId) {
     return;
   }
 
   const originalText = event.target.textContent;
   event.target.disabled = true;
-  event.target.textContent = "Saving...";
+  event.target.textContent = savePriceId ? "Saving..." : "Updating...";
 
   try {
-    const input = document.querySelector(`[data-price-id="${savePriceId}"]`);
-    const response = await apiFetch(`/admin/menu/${savePriceId}/price`, {
-      method: "PATCH",
-      body: JSON.stringify({ price: Number(input.value) }),
-    });
+    let response;
+
+    if (savePriceId) {
+      const input = document.querySelector(`[data-price-id="${savePriceId}"]`);
+      response = await apiFetch(`/admin/menu/${savePriceId}/price`, {
+        method: "PATCH",
+        body: JSON.stringify({ price: Number(input.value) }),
+      });
+    } else {
+      response = await apiFetch(`/admin/menu/${toggleAvailabilityId}/availability`, {
+        method: "PATCH",
+        body: JSON.stringify({ isAvailable: event.target.dataset.nextAvailability === "true" }),
+      });
+    }
+
     const data = await readJsonResponse(response);
 
     if (!response.ok) {
       throw new Error(data?.message || "Menu update failed.");
     }
 
-    showDashboardMessage("Menu price updated.");
+    showDashboardMessage(savePriceId ? "Menu price updated." : `Menu item ${data.isAvailable ? "restored" : "archived"}.`);
     await refreshDashboard();
   } catch (error) {
     console.error(error);
@@ -382,7 +447,36 @@ menuManagementList.addEventListener("click", async (event) => {
 
 menuCreateForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  showDashboardMessage("Adding or removing menu items is disabled for now.", true);
+  const formData = new FormData(menuCreateForm);
+  menuCreateButton.disabled = true;
+  menuCreateButton.textContent = "Adding...";
+
+  try {
+    const response = await apiFetch("/admin/menu", {
+      method: "POST",
+      body: JSON.stringify({
+        name: String(formData.get("name") || "").trim(),
+        category: String(formData.get("category") || "").trim(),
+        price: Number(formData.get("price")),
+        image: String(formData.get("image") || "").trim(),
+      }),
+    });
+    const data = await readJsonResponse(response);
+
+    if (!response.ok) {
+      throw new Error(data?.message || "Failed to add menu item.");
+    }
+
+    menuCreateForm.reset();
+    showDashboardMessage(`Added menu item ${data.name}.`);
+    await refreshDashboard();
+  } catch (error) {
+    console.error(error);
+    showDashboardMessage(error.message || "Failed to add menu item.", true);
+  } finally {
+    menuCreateButton.disabled = false;
+    menuCreateButton.textContent = "Add Menu Item";
+  }
 });
 
 createUserForm.addEventListener("submit", async (event) => {
@@ -417,6 +511,54 @@ createUserForm.addEventListener("submit", async (event) => {
   } finally {
     createUserButton.disabled = false;
     createUserButton.textContent = "Create User";
+  }
+});
+
+userManagementList.addEventListener("click", async (event) => {
+  const saveUserId = event.target.dataset.saveUserId;
+  const deleteUserId = event.target.dataset.deleteUserId;
+
+  if (!saveUserId && !deleteUserId) {
+    return;
+  }
+
+  if (deleteUserId && !window.confirm("Remove this user account? This cannot be undone.")) {
+    return;
+  }
+
+  const originalText = event.target.textContent;
+  event.target.disabled = true;
+  event.target.textContent = saveUserId ? "Saving..." : "Removing...";
+
+  try {
+    let response;
+
+    if (saveUserId) {
+      const roleSelect = document.querySelector(`[data-user-role-id="${saveUserId}"]`);
+      response = await apiFetch(`/admin/users/${saveUserId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ role: roleSelect.value }),
+      });
+    } else {
+      response = await apiFetch(`/admin/users/${deleteUserId}`, {
+        method: "DELETE",
+      });
+    }
+
+    const data = await readJsonResponse(response);
+
+    if (!response.ok) {
+      throw new Error(data?.message || "Failed to update the user.");
+    }
+
+    showDashboardMessage(saveUserId ? "User role updated." : "User removed.");
+    await refreshDashboard();
+  } catch (error) {
+    console.error(error);
+    showDashboardMessage(error.message || "Failed to update the user.", true);
+  } finally {
+    event.target.disabled = false;
+    event.target.textContent = originalText;
   }
 });
 

@@ -76,12 +76,22 @@
       <section id="adminPanelMenu" data-admin-panel="menu" class="hidden rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <div class="flex flex-col gap-2 border-b border-slate-200 pb-5">
           <h2 class="text-2xl font-bold">Menu Management</h2>
-          <p id="menuSectionHint" class="text-sm text-slate-500">Price changes are enabled here. Adding or removing items is disabled for now, so chef currently matches staff permissions.</p>
+          <p id="menuSectionHint" class="text-sm text-slate-500">Chef and admin can add menu items with an image path or URL. Removing uses archive/restore so items can be safely brought back later.</p>
         </div>
 
-        <form id="menuCreateForm" class="hidden">
-          <input type="hidden" name="disabled" value="true">
-          <button id="menuCreateButton" type="submit" class="hidden">Add Menu Item</button>
+        <form id="menuCreateForm" class="mt-6 hidden grid gap-4 rounded-2xl bg-slate-50 p-4 md:grid-cols-2">
+          <input id="menuName" name="name" type="text" placeholder="Menu item name" class="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
+          <select id="menuCategory" name="category" class="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
+            <option value="">Select category</option>
+            <option value="food">Food</option>
+            <option value="drink">Drink</option>
+            <option value="dessert">Dessert</option>
+          </select>
+          <input id="menuPrice" name="price" type="number" min="0" placeholder="Price" class="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
+          <input id="menuImage" name="image" type="text" placeholder="Image path or URL (Assets/images/example.jpg)" class="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
+          <button id="menuCreateButton" type="submit" class="rounded-xl bg-orange-500 px-4 py-3 font-medium text-white transition hover:bg-orange-600 md:col-span-2">
+            Add Menu Item
+          </button>
         </form>
 
         <div id="menuManagementList" class="mt-6 grid gap-3"></div>
@@ -115,7 +125,7 @@
         <div class="mt-4 grid gap-3 text-sm text-slate-600 md:grid-cols-3">
           <div class="rounded-2xl bg-slate-50 p-4">
             <p class="font-semibold text-slate-900">Admin</p>
-            <p class="mt-1">Can create users, update order statuses, and change prices for existing menu items.</p>
+            <p class="mt-1">Can create users, remove users, change another user's role, update order statuses, change prices, and manage the menu catalog.</p>
           </div>
           <div class="rounded-2xl bg-slate-50 p-4">
             <p class="font-semibold text-slate-900">Staff</p>
@@ -123,7 +133,7 @@
           </div>
           <div class="rounded-2xl bg-slate-50 p-4">
             <p class="font-semibold text-slate-900">Chef</p>
-            <p class="mt-1">Currently has the same permissions as staff: update order status and change prices for existing menu items.</p>
+            <p class="mt-1">Can update order statuses, change existing prices, and add, archive, or restore menu items.</p>
           </div>
         </div>
       </section>

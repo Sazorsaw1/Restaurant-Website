@@ -6,6 +6,7 @@ const tableNumberSelect = document.getElementById("tableNumber");
 const submitOrderButton = document.getElementById("submitOrder");
 const generatedOrderIdEl = document.getElementById("generatedOrderId");
 const copyBtn = document.getElementById("copyOrderId");
+const largeOrderNotice = document.getElementById("largeOrderNotice");
 
 let orderState = {};
 
@@ -86,8 +87,9 @@ function closeOrderModal() {
   toggleModal(orderModal, false);
 }
 
-function openSuccessModal(orderId) {
+function openSuccessModal(orderId, shouldShowLargeOrderNotice = false) {
   generatedOrderIdEl.textContent = orderId;
+  largeOrderNotice.classList.toggle("hidden", !shouldShowLargeOrderNotice);
   toggleModal(successModal, true);
 }
 
@@ -168,7 +170,9 @@ submitOrderButton.addEventListener("click", async () => {
   }
 
   const orderId = generateOrderId();
+  const totalQuantity = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const requiresStaffFollowup = selectedItems.some((item) => item.quantity > 20) || totalQuantity > 30;
   const orderData = {
     orderId,
     tableNumber,
@@ -181,6 +185,7 @@ submitOrderButton.addEventListener("click", async () => {
     totalPrice,
     status: "Pending",
     createdAt: new Date().toISOString(),
+    requiresStaffFollowup,
   };
 
   submitOrderButton.disabled = true;
@@ -197,7 +202,7 @@ submitOrderButton.addEventListener("click", async () => {
     }
 
     closeOrderModal();
-    openSuccessModal(orderId);
+    openSuccessModal(orderId, requiresStaffFollowup);
   } catch (error) {
     console.error(error);
     alert("The order could not be submitted. Please make sure the backend server is running and try again.");
