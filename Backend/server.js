@@ -221,6 +221,7 @@ function serializeOrder(row) {
     items: Array.isArray(items) ? items : [],
     status: normalizeOrderStatus(row.status),
     completedAt: row.completed_at || row.completedAt || null,
+    completedExpiresAt: row.completed_expires_at || row.completedExpiresAt || null,
     requiresStaffFollowup: Boolean(row.requires_staff_followup ?? row.requiresStaffFollowup),
   };
 }
@@ -536,10 +537,23 @@ async function initializeDatabase() {
     ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP WITHOUT TIME ZONE;
 
     ALTER TABLE orders
+    ADD COLUMN IF NOT EXISTS completed_expires_at TIMESTAMP WITHOUT TIME ZONE;
+
+    ALTER TABLE orders
     ADD COLUMN IF NOT EXISTS requires_staff_followup BOOLEAN NOT NULL DEFAULT FALSE;
 
     CREATE INDEX IF NOT EXISTS idx_orders_completed_at ON orders(completed_at);
+    CREATE INDEX IF NOT EXISTS idx_orders_completed_expires_at ON orders(completed_expires_at);
   `);
+
+  await pool.query(
+    `UPDATE orders
+     SET completed_expires_at = completed_at + ($1 * INTERVAL '1 second')
+     WHERE status = 'Completed'
+       AND completed_at IS NOT NULL
+       AND completed_expires_at IS NULL`,
+    [COMPLETED_ORDER_RETENTION_SECONDS]
+  );
 
   await pool.query(`
     UPDATE menu_items
@@ -585,9 +599,8 @@ async function purgeCompletedOrders() {
       `SELECT order_id
        FROM orders
        WHERE status = 'Completed'
-         AND completed_at IS NOT NULL
-         AND completed_at <= NOW() - ($1 * INTERVAL '1 second')`,
-      [COMPLETED_ORDER_RETENTION_SECONDS]
+         AND completed_expires_at IS NOT NULL
+         AND completed_expires_at <= NOW()`
     );
 
     const expiredOrderIds = expiredOrdersResult.rows.map((row) => row.order_id);
@@ -1063,12 +1076,18 @@ app.patch("/admin/orders/:id/status", requireAdminAuth, requirePermission("updat
       `UPDATE orders
        SET status = $1,
            completed_at = CASE
-             WHEN $1 = 'Completed' THEN NOW()
+             WHEN $1 = 'Completed' AND status <> 'Completed' THEN NOW()
+             WHEN $1 = 'Completed' AND status = 'Completed' THEN COALESCE(completed_at, NOW())
+             ELSE NULL
+           END,
+           completed_expires_at = CASE
+             WHEN $1 = 'Completed' AND status <> 'Completed' THEN NOW() + ($3 * INTERVAL '1 second')
+             WHEN $1 = 'Completed' AND status = 'Completed' THEN COALESCE(completed_expires_at, NOW() + ($3 * INTERVAL '1 second'))
              ELSE NULL
            END
        WHERE order_id = $2
        RETURNING *`,
-      [status, orderId]
+      [status, orderId, COMPLETED_ORDER_RETENTION_SECONDS]
     );
 
     await pool.query(

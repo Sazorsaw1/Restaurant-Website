@@ -5,9 +5,109 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard | E-Restaurant</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body,
+    [data-theme-surface="header"],
+    .admin-card,
+    .admin-soft-card,
+    .admin-modal-shell,
+    .admin-input,
+    .admin-empty-state,
+    .admin-panel-trigger {
+      transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    body.admin-night-mode {
+      background: radial-gradient(circle at top, #1e1b4b, #020617 58%);
+      color: #e2e8f0;
+    }
+
+    body.admin-night-mode [data-theme-surface="header"] {
+      background: rgba(2, 6, 23, 0.88) !important;
+      border-color: #1e293b !important;
+    }
+
+    body.admin-night-mode .admin-card {
+      background: rgba(15, 23, 42, 0.94) !important;
+      border-color: #334155 !important;
+      color: #e2e8f0 !important;
+      box-shadow: 0 24px 60px rgba(2, 6, 23, 0.25);
+    }
+
+    body.admin-night-mode .admin-soft-card,
+    body.admin-night-mode .bg-slate-50 {
+      background: rgba(30, 41, 59, 0.76) !important;
+      border-color: #475569 !important;
+      color: #cbd5e1 !important;
+    }
+
+    body.admin-night-mode .admin-modal-shell {
+      background: rgba(15, 23, 42, 0.98) !important;
+      border-color: #334155 !important;
+      color: #e2e8f0 !important;
+    }
+
+    body.admin-night-mode .admin-empty-state {
+      background: rgba(15, 23, 42, 0.72) !important;
+      border-color: #334155 !important;
+      color: #94a3b8 !important;
+    }
+
+    body.admin-night-mode .admin-input {
+      background: #0f172a !important;
+      border-color: #475569 !important;
+      color: #e2e8f0 !important;
+    }
+
+    body.admin-night-mode .admin-input::placeholder {
+      color: #94a3b8 !important;
+    }
+
+    body.admin-night-mode .admin-panel-trigger.bg-white {
+      background: #f8fafc !important;
+      color: #0f172a !important;
+    }
+
+    body.admin-night-mode #themeToggleBtn {
+      background: #0f172a !important;
+      border-color: #475569 !important;
+      color: #e2e8f0 !important;
+    }
+
+    body.admin-night-mode .text-slate-900 {
+      color: #f8fafc !important;
+    }
+
+    body.admin-night-mode .text-slate-800 {
+      color: #e2e8f0 !important;
+    }
+
+    body.admin-night-mode .text-slate-700 {
+      color: #cbd5e1 !important;
+    }
+
+    body.admin-night-mode .text-slate-600,
+    body.admin-night-mode .text-slate-500,
+    body.admin-night-mode .text-slate-400 {
+      color: #94a3b8 !important;
+    }
+
+    body.admin-night-mode .border-slate-200,
+    body.admin-night-mode .border-slate-300 {
+      border-color: #334155 !important;
+    }
+
+    body.admin-night-mode .ring-slate-200 {
+      --tw-ring-color: #334155 !important;
+    }
+
+    body.admin-night-mode #menuCreateModal {
+      background: rgba(2, 6, 23, 0.72) !important;
+    }
+  </style>
 </head>
 <body class="min-h-screen bg-[radial-gradient(circle_at_top,_#fff7ed,_#f8fafc_55%)] text-slate-900">
-  <header class="border-b border-slate-200 bg-white/90 backdrop-blur">
+  <header data-theme-surface="header" class="border-b border-slate-200 bg-white/90 backdrop-blur">
     <div class="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
       <div>
         <p class="text-sm font-semibold uppercase tracking-[0.25em] text-orange-500">Staff Dashboard</p>
@@ -16,6 +116,9 @@
       </div>
 
       <div class="flex flex-wrap gap-3">
+        <button id="themeToggleBtn" class="rounded-xl border border-slate-300 bg-white px-4 py-2 font-medium text-slate-700 transition hover:bg-slate-50">
+          Night Mode
+        </button>
         <button id="refreshOrdersBtn" class="rounded-xl bg-slate-900 px-4 py-2 font-medium text-white transition hover:bg-slate-800">
           Refresh Orders
         </button>
@@ -53,22 +156,22 @@
           </div>
         </section>
 
-        <section class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <section class="admin-card rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <h2 class="text-xl font-bold">Quick Guide</h2>
           <div class="mt-4 grid gap-3 text-sm text-slate-600">
-            <div class="rounded-2xl bg-slate-50 p-4">
+            <div class="admin-soft-card rounded-2xl bg-slate-50 p-4">
               <p class="font-semibold text-slate-900">Overview</p>
               <p class="mt-1">Default landing page with order counts, role summary, and operating reminders.</p>
             </div>
-            <div class="rounded-2xl bg-slate-50 p-4">
+            <div class="admin-soft-card rounded-2xl bg-slate-50 p-4">
               <p class="font-semibold text-slate-900">Order</p>
               <p class="mt-1">All roles can update customer order progress and spot large-order follow-up notices.</p>
             </div>
-            <div class="rounded-2xl bg-slate-50 p-4">
+            <div class="admin-soft-card rounded-2xl bg-slate-50 p-4">
               <p class="font-semibold text-slate-900">Manage Menu</p>
               <p class="mt-1">Chef and admin can add items, change category and price, and archive or restore menu entries.</p>
             </div>
-            <div class="rounded-2xl bg-slate-50 p-4">
+            <div class="admin-soft-card rounded-2xl bg-slate-50 p-4">
               <p class="font-semibold text-slate-900">Manage User</p>
               <p class="mt-1">Admin only: create users, change another user's role, or remove an account.</p>
             </div>
@@ -79,42 +182,42 @@
       <section class="space-y-8">
         <div id="dashboardMessage" class="hidden rounded-2xl border px-4 py-3 text-sm"></div>
 
-        <section id="adminPanelOverview" data-admin-panel="overview" class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <section id="adminPanelOverview" data-admin-panel="overview" class="admin-card rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <div class="border-b border-slate-200 pb-5">
             <h2 class="text-2xl font-bold">Overview</h2>
             <p class="mt-1 text-sm text-slate-500">This is the default landing page after login. Use it to review the current service state before moving into an operational panel.</p>
           </div>
 
           <div class="mt-6 grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-            <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <article class="admin-card rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
               <p class="text-sm font-semibold uppercase tracking-wide text-slate-400">Total Orders</p>
               <p id="statTotalOrders" class="mt-3 text-3xl font-black text-slate-900">0</p>
             </article>
-            <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-amber-200">
+            <article class="admin-card rounded-2xl bg-white p-5 shadow-sm ring-1 ring-amber-200">
               <p class="text-sm font-semibold uppercase tracking-wide text-amber-600">Pending</p>
               <p id="statPendingOrders" class="mt-3 text-3xl font-black text-amber-600">0</p>
             </article>
-            <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-orange-200">
+            <article class="admin-card rounded-2xl bg-white p-5 shadow-sm ring-1 ring-orange-200">
               <p class="text-sm font-semibold uppercase tracking-wide text-orange-600">Preparing</p>
               <p id="statPreparingOrders" class="mt-3 text-3xl font-black text-orange-600">0</p>
             </article>
-            <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-green-200">
+            <article class="admin-card rounded-2xl bg-white p-5 shadow-sm ring-1 ring-green-200">
               <p class="text-sm font-semibold uppercase tracking-wide text-green-600">Ready / Completed</p>
               <p id="statClosedOrders" class="mt-3 text-3xl font-black text-green-600">0</p>
             </article>
           </div>
 
           <div class="mt-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-            <article class="rounded-3xl bg-slate-50 p-6 ring-1 ring-slate-200">
+            <article class="admin-soft-card rounded-3xl bg-slate-50 p-6 ring-1 ring-slate-200">
               <p class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Operations Snapshot</p>
               <h3 class="mt-3 text-xl font-bold text-slate-900">Today’s flow</h3>
               <p class="mt-2 text-sm leading-6 text-slate-600">Use `Order` for live queue handling, `Manage Menu` for pricing and menu visibility updates, and `Manage User` for staff access control.</p>
               <div class="mt-5 grid gap-3 md:grid-cols-2">
-                <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+                <div class="admin-card rounded-2xl bg-white p-4 ring-1 ring-slate-200">
                   <p class="text-xs font-semibold uppercase tracking-[0.2em] text-orange-500">Large Orders</p>
                   <p class="mt-2 text-sm text-slate-600">Orders with very high quantities will carry a staff-follow-up notice so the table can be confirmed directly.</p>
                 </div>
-                <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+                <div class="admin-card rounded-2xl bg-white p-4 ring-1 ring-slate-200">
                   <p class="text-xs font-semibold uppercase tracking-[0.2em] text-orange-500">Menu Control</p>
                   <p class="mt-2 text-sm text-slate-600">Catalog changes use archive and restore instead of destructive deletion, which keeps menu history safer.</p>
                 </div>
@@ -141,7 +244,7 @@
           </div>
         </section>
 
-        <section id="adminPanelOrders" data-admin-panel="orders" class="hidden rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <section id="adminPanelOrders" data-admin-panel="orders" class="admin-card hidden rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <div class="border-b border-slate-200 pb-5">
             <h2 class="text-2xl font-bold">Incoming Orders</h2>
             <p class="mt-1 text-sm text-slate-500">Update the status here so customers see the latest progress on the public page. Completed orders will auto-delete after 30 seconds for testing.</p>
@@ -150,7 +253,7 @@
           <div id="adminOrdersList" class="mt-6 grid gap-4"></div>
         </section>
 
-        <section id="adminPanelMenu" data-admin-panel="menu" class="hidden rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <section id="adminPanelMenu" data-admin-panel="menu" class="admin-card hidden rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <div class="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-start lg:justify-between">
             <div class="max-w-2xl">
               <h2 class="text-2xl font-bold">Menu Management</h2>
@@ -164,17 +267,17 @@
           <div id="menuManagementList" class="mt-6 grid gap-3"></div>
         </section>
 
-        <section id="adminPanelUsers" data-admin-panel="users" class="hidden rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <section id="adminPanelUsers" data-admin-panel="users" class="admin-card hidden rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <div class="border-b border-slate-200 pb-5">
             <h2 class="text-2xl font-bold">User Management</h2>
             <p class="mt-1 text-sm text-slate-500">Only admins can create staff and chef accounts for the staff-only dashboard.</p>
           </div>
 
-          <form id="createUserForm" class="mt-6 grid gap-4 rounded-2xl bg-slate-50 p-4">
-            <input id="newUserUsername" name="username" type="text" placeholder="Username" class="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
-            <input id="newUserFullName" name="fullName" type="text" placeholder="Full name" class="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
-            <input id="newUserPassword" name="password" type="password" placeholder="Temporary password" class="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
-            <select id="newUserRole" name="role" class="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
+          <form id="createUserForm" class="admin-soft-card mt-6 grid gap-4 rounded-2xl bg-slate-50 p-4">
+            <input id="newUserUsername" name="username" type="text" placeholder="Username" class="admin-input rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
+            <input id="newUserFullName" name="fullName" type="text" placeholder="Full name" class="admin-input rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
+            <input id="newUserPassword" name="password" type="password" placeholder="Temporary password" class="admin-input rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
+            <select id="newUserRole" name="role" class="admin-input rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
               <option value="staff">Staff</option>
               <option value="chef">Chef</option>
               <option value="admin">Admin</option>
@@ -191,7 +294,7 @@
   </main>
 
   <div id="menuCreateModal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-950/30 px-4 py-6 backdrop-blur-sm">
-    <div class="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-200">
+    <div class="admin-modal-shell w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-200">
       <div class="mb-6 flex items-start justify-between gap-4">
         <div>
           <p class="text-sm font-semibold uppercase tracking-[0.2em] text-orange-500">Menu Catalog</p>
@@ -204,16 +307,16 @@
       </div>
 
       <form id="menuCreateForm" class="grid gap-4 md:grid-cols-2">
-        <input id="menuName" name="name" type="text" placeholder="Menu item name" class="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
-        <select id="menuCategory" name="category" class="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
+        <input id="menuName" name="name" type="text" placeholder="Menu item name" class="admin-input rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
+        <select id="menuCategory" name="category" class="admin-input rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
           <option value="">Select category</option>
           <option value="main-course">Main Course</option>
           <option value="snack">Snack</option>
           <option value="beverages">Beverages</option>
           <option value="dessert">Dessert</option>
         </select>
-        <input id="menuPrice" name="price" type="number" min="0" placeholder="Price" class="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
-        <input id="menuImage" name="image" type="text" placeholder="Image path or URL" class="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
+        <input id="menuPrice" name="price" type="number" min="0" placeholder="Price" class="admin-input rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
+        <input id="menuImage" name="image" type="text" placeholder="Image path or URL" class="admin-input rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
         <button id="menuCreateButton" type="submit" class="rounded-xl bg-orange-500 px-4 py-3 font-medium text-white transition hover:bg-orange-600 md:col-span-2">
           Add Menu Item
         </button>

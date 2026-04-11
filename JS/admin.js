@@ -3,6 +3,7 @@ const ORDER_STATUSES = ["Pending", "Preparing", "Ready", "Completed"];
 const adminGreeting = document.getElementById("adminGreeting");
 const dashboardMessage = document.getElementById("dashboardMessage");
 const adminOrdersList = document.getElementById("adminOrdersList");
+const themeToggleBtn = document.getElementById("themeToggleBtn");
 const refreshOrdersBtn = document.getElementById("refreshOrdersBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const menuSectionHint = document.getElementById("menuSectionHint");
@@ -25,6 +26,7 @@ const statTotalOrders = document.getElementById("statTotalOrders");
 const statPendingOrders = document.getElementById("statPendingOrders");
 const statPreparingOrders = document.getElementById("statPreparingOrders");
 const statClosedOrders = document.getElementById("statClosedOrders");
+const THEME_STORAGE_KEY = "admin-theme-preference";
 const MENU_CATEGORIES = [
   { value: "main-course", label: "Main Course" },
   { value: "snack", label: "Snack" },
@@ -34,6 +36,29 @@ const MENU_CATEGORIES = [
 
 let currentSession = null;
 let activeAdminPanel = "overview";
+let activeTheme = "light";
+
+function getInitialTheme() {
+  const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+  if (savedTheme === "dark" || savedTheme === "light") {
+    return savedTheme;
+  }
+
+  return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
+}
+
+function applyTheme(theme) {
+  activeTheme = theme === "dark" ? "dark" : "light";
+  const isDark = activeTheme === "dark";
+  document.body.classList.toggle("admin-night-mode", isDark);
+  themeToggleBtn.textContent = isDark ? "Light Mode" : "Night Mode";
+  themeToggleBtn.setAttribute("aria-pressed", String(isDark));
+}
+
+function toggleTheme() {
+  applyTheme(activeTheme === "dark" ? "light" : "dark");
+  window.localStorage.setItem(THEME_STORAGE_KEY, activeTheme);
+}
 
 function setPanelTriggerButtonState(button, isActive) {
   button.classList.toggle("bg-white/15", !isActive);
@@ -153,7 +178,7 @@ function closeMenuCreateModal() {
 function renderOrders(orders) {
   if (orders.length === 0) {
     adminOrdersList.innerHTML = `
-      <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-500">
+      <div class="admin-empty-state rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-500">
         No orders yet. Customer orders will appear here once they are submitted.
       </div>
     `;
@@ -165,7 +190,7 @@ function renderOrders(orders) {
     const orderId = order.order_id || order.orderId;
 
     return `
-      <article class="rounded-2xl border border-slate-200 p-5 shadow-sm">
+      <article class="admin-card rounded-2xl border border-slate-200 p-5 shadow-sm">
         <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div class="grid gap-4 md:grid-cols-3 xl:flex-1">
             <div>
@@ -192,13 +217,18 @@ function renderOrders(orders) {
               Update Status
           </label>
             <div class="flex gap-2">
-              <select id="status-${orderId}" data-order-id="${orderId}" class="flex-1 rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
+              <select id="status-${orderId}" data-order-id="${orderId}" class="admin-input flex-1 rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
                 ${ORDER_STATUSES.map((status) => `<option value="${status}" ${status === order.status ? "selected" : ""}>${status}</option>`).join("")}
               </select>
               <button data-save-order-id="${orderId}" class="rounded-xl bg-orange-500 px-4 py-3 font-medium text-white transition hover:bg-orange-600">
                 Save
               </button>
             </div>
+            ${order.status === "Completed" ? `
+              <p class="mt-2 text-xs text-slate-400">
+                The 30-second removal timer starts when this order is marked completed.
+              </p>
+            ` : ""}
           </div>
         </div>
 
@@ -207,7 +237,7 @@ function renderOrders(orders) {
             <p class="mb-2 text-xs uppercase tracking-wide text-slate-400">Items</p>
             <div class="grid gap-2 md:grid-cols-2">
               ${items.map((item) => `
-                <div class="rounded-xl bg-slate-50 px-4 py-3">
+                <div class="admin-soft-card rounded-xl bg-slate-50 px-4 py-3">
                   <p class="font-medium text-slate-800">${item.name}</p>
                   <p class="mt-1 text-sm text-slate-500">Qty ${item.quantity}</p>
                   <p class="mt-2 text-sm font-semibold text-slate-900">${formatCurrency(item.total)}</p>
@@ -229,7 +259,7 @@ function renderOrders(orders) {
 function renderMenuItems(items) {
   if (items.length === 0) {
     menuManagementList.innerHTML = `
-      <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-slate-500">
+      <div class="admin-empty-state rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-slate-500">
         No menu items found.
       </div>
     `;
@@ -238,7 +268,7 @@ function renderMenuItems(items) {
 
   const canManageCatalog = Boolean(currentSession?.permissions?.manageMenuCatalog);
   menuManagementList.innerHTML = items.map((item) => `
-    <article class="rounded-2xl border border-slate-200 p-4 shadow-sm">
+    <article class="admin-card rounded-2xl border border-slate-200 p-4 shadow-sm">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div class="flex items-center gap-4">
           <img src="${item.image}" alt="${item.name}" class="h-16 w-16 rounded-2xl object-cover">
@@ -255,10 +285,10 @@ function renderMenuItems(items) {
         </div>
 
         <div class="flex flex-col gap-3 md:flex-row md:items-center">
-          <select data-category-id="${item.id}" class="rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
+          <select data-category-id="${item.id}" class="admin-input rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
             ${getMenuCategoryOptions(item.category)}
           </select>
-          <input data-price-id="${item.id}" type="number" min="0" value="${item.price}" class="rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
+          <input data-price-id="${item.id}" type="number" min="0" value="${item.price}" class="admin-input rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
           <button data-save-menu-id="${item.id}" class="rounded-xl bg-slate-900 px-4 py-2 font-medium text-white transition hover:bg-slate-800">
             Save Details
           </button>
@@ -281,7 +311,7 @@ function renderUsers(users) {
 
   if (users.length === 0) {
     userManagementList.innerHTML = `
-      <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-slate-500">
+      <div class="admin-empty-state rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-slate-500">
         No staff accounts yet.
       </div>
     `;
@@ -297,7 +327,7 @@ function renderUsers(users) {
         : "You can update this user's role or remove the account.";
 
     return `
-    <article class="rounded-2xl border border-slate-200 p-4">
+    <article class="admin-card rounded-2xl border border-slate-200 p-4">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p class="font-semibold text-slate-900">${user.fullName || user.username}</p>
@@ -305,7 +335,7 @@ function renderUsers(users) {
           <p class="mt-2 text-xs text-slate-400">${helperText}</p>
         </div>
         <div class="flex flex-col gap-3 md:flex-row md:items-center">
-          <select data-user-role-id="${user.id}" class="rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200" ${isSelf ? "disabled" : ""}>
+          <select data-user-role-id="${user.id}" class="admin-input rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200" ${isSelf ? "disabled" : ""}>
             <option value="staff" ${user.role === "staff" ? "selected" : ""}>Staff</option>
             <option value="chef" ${user.role === "chef" ? "selected" : ""}>Chef</option>
             <option value="admin" ${user.role === "admin" ? "selected" : ""}>Admin</option>
@@ -628,6 +658,7 @@ userManagementList.addEventListener("click", async (event) => {
 });
 
 refreshOrdersBtn.addEventListener("click", refreshDashboard);
+themeToggleBtn.addEventListener("click", toggleTheme);
 
 openMenuCreateModalBtn.addEventListener("click", openMenuCreateModal);
 closeMenuCreateModalBtn.addEventListener("click", closeMenuCreateModal);
@@ -668,6 +699,7 @@ logoutBtn.addEventListener("click", async () => {
 
 (async () => {
   try {
+    applyTheme(getInitialTheme());
     const session = await ensureAdminSession();
     if (!session) {
       return;
