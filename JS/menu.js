@@ -90,9 +90,17 @@ const menuContainer = document.getElementById("menuContainer");
 const searchInput = document.getElementById("searchInput");
 const categoryFilter = document.getElementById("categoryFilter");
 
+function getAutomationSlug(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function renderMenuLoadingState(message = "Loading menu...") {
   menuContainer.innerHTML = `
-    <div class="col-span-full rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
+    <div data-testid="menu-loading-state" class="col-span-full rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
       ${message}
     </div>
   `;
@@ -109,7 +117,7 @@ function populateCategoryFilter(items) {
 function renderMenu(items) {
   if (items.length === 0) {
     menuContainer.innerHTML = `
-      <div class="col-span-full rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
+      <div data-testid="menu-empty-state" class="col-span-full rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
         No menu items match your search.
       </div>
     `;
@@ -117,19 +125,29 @@ function renderMenu(items) {
   }
 
   menuContainer.innerHTML = items.map((item) => `
-    <article class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-amber-100 transition hover:-translate-y-1 hover:shadow-lg">
-      <img src="${item.image}" alt="${item.name}" class="h-48 w-full object-cover">
+    <article
+      data-testid="menu-card-${getAutomationSlug(item.name)}"
+      data-menu-name="${item.name}"
+      data-menu-category="${item.category}"
+      class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-amber-100 transition hover:-translate-y-1 hover:shadow-lg"
+    >
+      <img
+        src="${item.image}"
+        alt="${item.name}"
+        data-testid="menu-image-${getAutomationSlug(item.name)}"
+        class="h-48 w-full object-cover"
+      >
       <div class="p-5">
         <div class="mb-3 flex items-start justify-between gap-4">
           <div>
-            <h2 class="text-xl font-bold text-slate-900">${item.name}</h2>
-            <p class="mt-1 text-sm capitalize text-slate-500">${item.category}</p>
+            <h2 data-testid="menu-name-${getAutomationSlug(item.name)}" class="text-xl font-bold text-slate-900">${item.name}</h2>
+            <p data-testid="menu-category-${getAutomationSlug(item.name)}" class="mt-1 text-sm capitalize text-slate-500">${item.category}</p>
           </div>
-          <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-orange-700">
+          <span data-testid="menu-badge-${getAutomationSlug(item.name)}" class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-orange-700">
             ${item.category}
           </span>
         </div>
-        <p class="text-lg font-bold text-orange-600">${formatCurrency(item.price)}</p>
+        <p data-testid="menu-price-${getAutomationSlug(item.name)}" class="text-lg font-bold text-orange-600">${formatCurrency(item.price)}</p>
       </div>
     </article>
   `).join("");

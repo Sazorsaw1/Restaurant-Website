@@ -15,6 +15,14 @@ function getStatusBadge(status) {
   }
 }
 
+function getAutomationSlug(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 const checkModal = document.getElementById("checkModal");
 const openCheckBtn = document.getElementById("openCheckModal");
 const cancelCheckBtn = document.getElementById("cancelCheckOrder");
@@ -59,7 +67,7 @@ async function handleCheckOrder() {
   }
 
   const orderId = `ORD-${input}`;
-  orderResult.innerHTML = `<p class="text-slate-500">Checking order...</p>`;
+  orderResult.innerHTML = `<p data-testid="order-result-loading" class="text-slate-500">Checking order...</p>`;
   checkOrderBtn.disabled = true;
   checkOrderBtn.textContent = "Checking...";
 
@@ -69,7 +77,7 @@ async function handleCheckOrder() {
     });
 
     if (!response.ok) {
-      orderResult.innerHTML = `<p class="text-red-500">Order not found.</p>`;
+      orderResult.innerHTML = `<p data-testid="order-result-not-found" class="text-red-500">Order not found.</p>`;
       return;
     }
 
@@ -78,46 +86,46 @@ async function handleCheckOrder() {
     const totalPrice = Number(order.total_price ?? order.totalPrice ?? 0);
 
     if (!order || items.length === 0) {
-      orderResult.innerHTML = `<p class="text-red-500">Order data is incomplete.</p>`;
+      orderResult.innerHTML = `<p data-testid="order-result-incomplete" class="text-red-500">Order data is incomplete.</p>`;
       return;
     }
 
     orderResult.innerHTML = `
-      <div class="space-y-4">
+      <div data-testid="order-result-card" data-order-id="${order.order_id ?? order.orderId}" class="space-y-4">
         <div class="flex items-start justify-between gap-4">
           <div>
             <p class="text-xs uppercase tracking-wide text-slate-400">Order ID</p>
-            <p class="font-semibold text-slate-900">${order.order_id ?? order.orderId}</p>
+            <p data-testid="result-order-id" class="font-semibold text-slate-900">${order.order_id ?? order.orderId}</p>
           </div>
-          ${getStatusBadge(order.status)}
+          <div data-testid="result-order-status" data-status="${getAutomationSlug(order.status)}">${getStatusBadge(order.status)}</div>
         </div>
 
         <div>
           <p class="text-xs uppercase tracking-wide text-slate-400">Table</p>
-          <p class="font-semibold text-slate-900">${order.table_number ?? order.tableNumber}</p>
+          <p data-testid="result-table-number" class="font-semibold text-slate-900">${order.table_number ?? order.tableNumber}</p>
         </div>
 
         <div>
           <p class="mb-2 text-xs uppercase tracking-wide text-slate-400">Items</p>
-          <div class="space-y-2">
+          <div data-testid="result-order-items" class="space-y-2">
             ${items.map((item) => `
-              <div class="flex justify-between rounded-lg bg-slate-50 px-3 py-2">
-                <span class="text-slate-700">${item.name} x${item.quantity}</span>
-                <span class="font-medium text-slate-900">${formatCurrency(item.total)}</span>
+              <div data-testid="result-item-${getAutomationSlug(item.name)}" class="flex justify-between rounded-lg bg-slate-50 px-3 py-2">
+                <span data-testid="result-item-name-${getAutomationSlug(item.name)}" class="text-slate-700">${item.name} x${item.quantity}</span>
+                <span data-testid="result-item-total-${getAutomationSlug(item.name)}" class="font-medium text-slate-900">${formatCurrency(item.total)}</span>
               </div>
             `).join("")}
           </div>
         </div>
 
-        <div class="flex justify-between border-t border-slate-200 pt-3 text-base font-bold text-slate-900">
+        <div data-testid="result-total-row" class="flex justify-between border-t border-slate-200 pt-3 text-base font-bold text-slate-900">
           <span>Total</span>
-          <span>${formatCurrency(totalPrice)}</span>
+          <span data-testid="result-total-price">${formatCurrency(totalPrice)}</span>
         </div>
       </div>
     `;
   } catch (error) {
     console.error(error);
-    orderResult.innerHTML = `<p class="text-red-500">Unable to reach the backend. Please try again.</p>`;
+    orderResult.innerHTML = `<p data-testid="order-result-backend-error" class="text-red-500">Unable to reach the backend. Please try again.</p>`;
   } finally {
     checkOrderBtn.disabled = false;
     checkOrderBtn.textContent = "Check";

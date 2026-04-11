@@ -6,7 +6,7 @@
   <title>E-Restaurant</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="min-h-screen bg-amber-50 text-slate-900">
+<body class="min-h-screen bg-amber-50 text-slate-900" data-page="customer-home" data-testid="customer-home-page">
   <header class="sticky top-0 z-20 border-b border-amber-200 bg-white/90 backdrop-blur">
     <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
       <div>
@@ -17,12 +17,16 @@
       <div class="flex gap-3">
         <button
           id="openCheckModal"
+          name="open-check-order"
+          data-testid="open-check-order-button"
           class="rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
         >
           Check Order
         </button>
         <button
           id="openModal"
+          name="open-create-order"
+          data-testid="open-create-order-button"
           class="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white shadow-sm transition hover:bg-orange-600"
         >
           Create Order
@@ -44,12 +48,16 @@
       <div class="flex flex-col gap-3 md:flex-row">
         <input
           id="searchInput"
+          name="menu-search"
+          data-testid="menu-search-input"
           type="text"
           placeholder="Search menu..."
           class="flex-1 rounded-lg border border-slate-300 px-4 py-3 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200"
         >
         <select
           id="categoryFilter"
+          name="menu-category-filter"
+          data-testid="menu-category-filter"
           class="rounded-lg border border-slate-300 px-4 py-3 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200"
         >
           <option value="">All Categories</option>
@@ -61,11 +69,11 @@
     </section>
 
     <section>
-      <div id="menuContainer" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
+      <div id="menuContainer" data-testid="menu-container" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
     </section>
   </main>
 
-  <div id="orderModal" class="fixed inset-0 z-30 hidden items-center justify-center bg-slate-950/50 px-4 py-6">
+  <div id="orderModal" data-testid="create-order-modal" class="fixed inset-0 z-30 hidden items-center justify-center bg-slate-950/50 px-4 py-6">
     <div class="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
       <div class="mb-5">
         <div>
@@ -76,7 +84,7 @@
 
       <div class="mb-4">
         <label for="tableNumber" class="mb-2 block text-sm font-semibold text-slate-700">Table Number</label>
-        <select id="tableNumber" class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
+        <select id="tableNumber" name="table-number" data-testid="table-number-select" class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200">
           <option value="">Select Table</option>
           <option value="Table 1">Table 1</option>
           <option value="Table 2">Table 2</option>
@@ -96,26 +104,26 @@
           <p class="text-sm font-semibold text-slate-700">Menu Selection</p>
           <p class="text-xs text-slate-400">Adjust quantity before submitting</p>
         </div>
-        <div id="orderItems" class="max-h-72 space-y-3 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3"></div>
+        <div id="orderItems" data-testid="order-items-container" class="max-h-72 space-y-3 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3"></div>
       </div>
 
-      <div class="mb-5 flex items-center justify-between rounded-xl bg-amber-50 px-4 py-3">
+      <div data-testid="order-total-panel" class="mb-5 flex items-center justify-between rounded-xl bg-amber-50 px-4 py-3">
         <span class="font-semibold text-slate-700">Total</span>
-        <span class="text-lg font-bold text-orange-600">Rp <span id="totalPrice">0</span></span>
+        <span class="text-lg font-bold text-orange-600">Rp <span id="totalPrice" data-testid="order-total-price">0</span></span>
       </div>
 
       <div class="flex justify-end gap-3">
-        <button id="cancelOrder" class="rounded-lg border border-slate-300 px-4 py-2 font-medium text-slate-700 transition hover:bg-slate-50">
+        <button id="cancelOrder" name="cancel-order" data-testid="cancel-order-button" class="rounded-lg border border-slate-300 px-4 py-2 font-medium text-slate-700 transition hover:bg-slate-50">
           Cancel
         </button>
-        <button id="submitOrder" class="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-600">
+        <button id="submitOrder" name="submit-order" data-testid="submit-order-button" class="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-600">
           Submit Order
         </button>
       </div>
     </div>
   </div>
 
-  <div id="checkModal" class="fixed inset-0 z-30 hidden items-center justify-center bg-slate-950/50 px-4 py-6">
+  <div id="checkModal" data-testid="check-order-modal" class="fixed inset-0 z-30 hidden items-center justify-center bg-slate-950/50 px-4 py-6">
     <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
       <div class="mb-5">
         <div>
@@ -131,6 +139,8 @@
         </span>
         <input
           id="orderIdInput"
+          name="order-id-input"
+          data-testid="order-id-input"
           type="text"
           inputmode="numeric"
           placeholder="123456"
@@ -139,35 +149,35 @@
       </div>
 
       <div class="mb-4 flex justify-end gap-3">
-        <button id="cancelCheckOrder" class="rounded-lg border border-slate-300 px-4 py-2 font-medium text-slate-700 transition hover:bg-slate-50">
+        <button id="cancelCheckOrder" name="cancel-check-order" data-testid="cancel-check-order-button" class="rounded-lg border border-slate-300 px-4 py-2 font-medium text-slate-700 transition hover:bg-slate-50">
           Cancel
         </button>
-        <button id="checkOrderBtn" class="rounded-lg bg-slate-800 px-4 py-2 font-medium text-white transition hover:bg-slate-900">
+        <button id="checkOrderBtn" name="check-order" data-testid="check-order-button" class="rounded-lg bg-slate-800 px-4 py-2 font-medium text-white transition hover:bg-slate-900">
           Check
         </button>
       </div>
 
-      <div id="orderResult" class="min-h-12 border-t border-slate-200 pt-4 text-sm"></div>
+      <div id="orderResult" data-testid="order-result" class="min-h-12 border-t border-slate-200 pt-4 text-sm"></div>
     </div>
   </div>
 
-  <div id="successModal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-950/50 px-4 py-6">
+  <div id="successModal" data-testid="success-modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-950/50 px-4 py-6">
     <div class="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-2xl">
       <p class="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-green-600">Order Sent</p>
       <h2 class="mb-3 text-2xl font-bold text-slate-900">Order Successful</h2>
       <p class="mb-4 text-sm text-slate-500">Keep this order number so you can track the kitchen status later.</p>
-      <div id="largeOrderNotice" class="mb-4 hidden rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-medium text-orange-700">
+      <div id="largeOrderNotice" data-testid="large-order-notice" class="mb-4 hidden rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-medium text-orange-700">
         This order is large or highly detailed. A staff member will come to your table to confirm the order specifications.
       </div>
 
-      <div class="mb-4 flex items-center justify-center gap-2">
-        <span id="generatedOrderId" class="rounded-lg bg-slate-100 px-4 py-2 text-lg font-bold text-slate-900">ORD-XXXXXX</span>
-        <button id="copyOrderId" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+      <div data-testid="generated-order-section" class="mb-4 flex items-center justify-center gap-2">
+        <span id="generatedOrderId" data-testid="generated-order-id" class="rounded-lg bg-slate-100 px-4 py-2 text-lg font-bold text-slate-900">ORD-XXXXXX</span>
+        <button id="copyOrderId" name="copy-order-id" data-testid="copy-order-id-button" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
           Copy
         </button>
       </div>
 
-      <button id="closeSuccessModal" class="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-600">
+      <button id="closeSuccessModal" name="close-success-modal" data-testid="close-success-modal-button" class="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-600">
         OK
       </button>
     </div>

@@ -10,6 +10,14 @@ const largeOrderNotice = document.getElementById("largeOrderNotice");
 
 let orderState = {};
 
+function getAutomationSlug(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function getQuantityElementId(name) {
   return `qty-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 }
@@ -29,7 +37,7 @@ function createInitialOrderState() {
 function renderOrderItems() {
   if (menu.length === 0) {
     orderItemsContainer.innerHTML = `
-      <div class="rounded-xl bg-white p-4 text-sm text-slate-500">
+      <div data-testid="order-items-empty-state" class="rounded-xl bg-white p-4 text-sm text-slate-500">
         No menu items are available right now.
       </div>
     `;
@@ -37,19 +45,40 @@ function renderOrderItems() {
   }
 
   orderItemsContainer.innerHTML = menu.map((item) => `
-    <div class="flex items-center justify-between gap-4 rounded-xl bg-white p-3 shadow-sm">
+    <div
+      data-testid="order-item-${getAutomationSlug(item.name)}"
+      data-menu-name="${item.name}"
+      class="flex items-center justify-between gap-4 rounded-xl bg-white p-3 shadow-sm"
+    >
       <label class="flex min-w-0 flex-1 items-center gap-3">
-        <input type="checkbox" data-name="${item.name}" class="h-4 w-4 rounded border-slate-300 text-orange-500 focus:ring-orange-400">
+        <input
+          type="checkbox"
+          data-name="${item.name}"
+          data-testid="order-checkbox-${getAutomationSlug(item.name)}"
+          class="h-4 w-4 rounded border-slate-300 text-orange-500 focus:ring-orange-400"
+        >
         <div class="min-w-0">
-          <p class="truncate font-medium text-slate-800">${item.name}</p>
-          <p class="text-sm text-slate-500">${formatCurrency(item.price)}</p>
+          <p data-testid="order-item-name-${getAutomationSlug(item.name)}" class="truncate font-medium text-slate-800">${item.name}</p>
+          <p data-testid="order-item-price-${getAutomationSlug(item.name)}" class="text-sm text-slate-500">${formatCurrency(item.price)}</p>
         </div>
       </label>
 
       <div class="flex items-center gap-2">
-        <button type="button" data-action="minus" data-name="${item.name}" class="rounded-md bg-slate-200 px-3 py-1 font-semibold text-slate-700 transition hover:bg-slate-300">-</button>
-        <span id="${getQuantityElementId(item.name)}" class="w-6 text-center font-semibold text-slate-800">1</span>
-        <button type="button" data-action="plus" data-name="${item.name}" class="rounded-md bg-slate-200 px-3 py-1 font-semibold text-slate-700 transition hover:bg-slate-300">+</button>
+        <button
+          type="button"
+          data-action="minus"
+          data-name="${item.name}"
+          data-testid="decrease-quantity-${getAutomationSlug(item.name)}"
+          class="rounded-md bg-slate-200 px-3 py-1 font-semibold text-slate-700 transition hover:bg-slate-300"
+        >-</button>
+        <span id="${getQuantityElementId(item.name)}" data-testid="quantity-value-${getAutomationSlug(item.name)}" class="w-6 text-center font-semibold text-slate-800">1</span>
+        <button
+          type="button"
+          data-action="plus"
+          data-name="${item.name}"
+          data-testid="increase-quantity-${getAutomationSlug(item.name)}"
+          class="rounded-md bg-slate-200 px-3 py-1 font-semibold text-slate-700 transition hover:bg-slate-300"
+        >+</button>
       </div>
     </div>
   `).join("");
@@ -89,6 +118,7 @@ function closeOrderModal() {
 
 function openSuccessModal(orderId, shouldShowLargeOrderNotice = false) {
   generatedOrderIdEl.textContent = orderId;
+  successModal.dataset.orderId = orderId;
   largeOrderNotice.classList.toggle("hidden", !shouldShowLargeOrderNotice);
   toggleModal(successModal, true);
 }
