@@ -3,6 +3,9 @@ const ORDER_STATUSES = ["Pending", "Preparing", "Ready", "Completed"];
 const adminGreeting = document.getElementById("adminGreeting");
 const dashboardMessage = document.getElementById("dashboardMessage");
 const adminOrdersList = document.getElementById("adminOrdersList");
+const orderViewTabs = document.getElementById("orderViewTabs");
+const orderStatusFilters = document.getElementById("orderStatusFilters");
+const orderPanelDescription = document.getElementById("orderPanelDescription");
 const themeToggleBtn = document.getElementById("themeToggleBtn");
 const refreshOrdersBtn = document.getElementById("refreshOrdersBtn");
 const logoutBtn = document.getElementById("logoutBtn");
@@ -25,7 +28,8 @@ const adminPanels = Array.from(document.querySelectorAll("[data-admin-panel]"));
 const statTotalOrders = document.getElementById("statTotalOrders");
 const statPendingOrders = document.getElementById("statPendingOrders");
 const statPreparingOrders = document.getElementById("statPreparingOrders");
-const statClosedOrders = document.getElementById("statClosedOrders");
+const statReadyOrders = document.getElementById("statReadyOrders");
+const statCompletedOrders = document.getElementById("statCompletedOrders");
 const THEME_STORAGE_KEY = "admin-theme-preference";
 const MENU_CATEGORIES = [
   { value: "main-course", label: "Main Course" },
@@ -37,6 +41,9 @@ const MENU_CATEGORIES = [
 let currentSession = null;
 let activeAdminPanel = "overview";
 let activeTheme = "light";
+let allOrders = [];
+let activeOrderView = "active";
+let activeOrderFilter = "all";
 
 function getInitialTheme() {
   const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
@@ -117,12 +124,109 @@ function getStatusPill(status) {
 function updateStats(orders) {
   const pending = orders.filter((order) => order.status === "Pending").length;
   const preparing = orders.filter((order) => order.status === "Preparing").length;
-  const readyOrCompleted = orders.filter((order) => ["Ready", "Completed"].includes(order.status)).length;
+  const ready = orders.filter((order) => order.status === "Ready").length;
+  const completed = orders.filter((order) => order.status === "Completed").length;
 
   statTotalOrders.textContent = String(orders.length);
   statPendingOrders.textContent = String(pending);
   statPreparingOrders.textContent = String(preparing);
-  statClosedOrders.textContent = String(readyOrCompleted);
+  statReadyOrders.textContent = String(ready);
+  statCompletedOrders.textContent = String(completed);
+}
+
+function formatDateTime(value) {
+  if (!value) {
+    return "Not recorded";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "Not recorded";
+  }
+
+  return parsed.toLocaleString("id-ID", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getOrderTimestamp(order, keys) {
+  for (const key of keys) {
+    const rawValue = order[key];
+    if (!rawValue) {
+      continue;
+    }
+
+    const parsed = new Date(rawValue);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.getTime();
+    }
+  }
+
+  return 0;
+}
+
+function setOrderViewTabStyles() {
+  Array.from(orderViewTabs.querySelectorAll("[data-order-view]")).forEach((button) => {
+    const isActive = button.dataset.orderView === activeOrderView;
+    button.classList.toggle("bg-slate-900", isActive);
+    button.classList.toggle("text-white", isActive);
+    button.classList.toggle("hover:bg-slate-800", isActive);
+    button.classList.toggle("border", !isActive);
+    button.classList.toggle("border-slate-300", !isActive);
+    button.classList.toggle("text-slate-700", !isActive);
+    button.classList.toggle("hover:bg-slate-50", !isActive);
+  });
+}
+
+function setOrderFilterStyles() {
+  Array.from(orderStatusFilters.querySelectorAll("[data-order-filter]")).forEach((button) => {
+    const isActive = button.dataset.orderFilter === activeOrderFilter;
+    button.classList.toggle("bg-orange-500", isActive);
+    button.classList.toggle("text-white", isActive);
+    button.classList.toggle("hover:bg-orange-600", isActive);
+    button.classList.toggle("border", !isActive);
+    button.classList.toggle("border-slate-300", !isActive);
+    button.classList.toggle("text-slate-600", !isActive);
+    button.classList.toggle("hover:bg-slate-50", !isActive);
+  });
+}
+
+function getVisibleOrders() {
+  const completedOrders = allOrders
+    .filter((order) => order.status === "Completed")
+    .sort((left, right) => getOrderTimestamp(right, ["completedAt", "completed_at", "createdAt", "created_at"]) - getOrderTimestamp(left, ["completedAt", "completed_at", "createdAt", "created_at"]));
+
+  if (activeOrderView === "completed") {
+    return completedOrders;
+  }
+
+  const activeOrders = allOrders
+    .filter((order) => order.status !== "Completed")
+    .sort((left, right) => getOrderTimestamp(left, ["createdAt", "created_at", "completedAt", "completed_at"]) - getOrderTimestamp(right, ["createdAt", "created_at", "completedAt", "completed_at"]));
+
+  switch (activeOrderFilter) {
+    case "Pending":
+    case "Preparing":
+    case "Ready":
+      return activeOrders.filter((order) => order.status === activeOrderFilter);
+    case "followup":
+      return activeOrders.filter((order) => order.requires_staff_followup || order.requiresStaffFollowup);
+    default:
+      return activeOrders;
+  }
+}
+
+function updateOrderPanelState() {
+  orderPanelDescription.textContent = activeOrderView === "completed"
+    ? "Review completed orders here. If one was completed by mistake, you can still move it back into the active queue."
+    : "Track the live queue, filter by status, and update orders as they move through service.";
+  orderStatusFilters.classList.toggle("hidden", activeOrderView === "completed");
+  setOrderViewTabStyles();
+  setOrderFilterStyles();
 }
 
 function setActiveAdminPanel(panelName) {
@@ -179,7 +283,9 @@ function renderOrders(orders) {
   if (orders.length === 0) {
     adminOrdersList.innerHTML = `
       <div class="admin-empty-state rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-500">
-        No orders yet. Customer orders will appear here once they are submitted.
+        ${activeOrderView === "completed"
+          ? "No completed orders yet. Finished orders will appear here once they are marked completed."
+          : "No active orders right now. New customer orders will appear here once they are submitted."}
       </div>
     `;
     return;
@@ -226,7 +332,7 @@ function renderOrders(orders) {
             </div>
             ${order.status === "Completed" ? `
               <p class="mt-2 text-xs text-slate-400">
-                The 30-second removal timer starts when this order is marked completed.
+                Completed at ${formatDateTime(order.completedAt)}.
               </p>
             ` : ""}
           </div>
@@ -393,9 +499,11 @@ async function loadOrders() {
   }
 
   const orders = await readJsonResponse(response);
+  allOrders = Array.isArray(orders) ? orders : [];
   updateStats(orders);
-  renderOrders(orders);
-  return orders;
+  updateOrderPanelState();
+  renderOrders(getVisibleOrders());
+  return allOrders;
 }
 
 async function loadMenuManagement() {
@@ -488,6 +596,28 @@ adminOrdersList.addEventListener("click", async (event) => {
     event.target.disabled = false;
     event.target.textContent = originalText;
   }
+});
+
+orderViewTabs.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-order-view]");
+  if (!button) {
+    return;
+  }
+
+  activeOrderView = button.dataset.orderView;
+  updateOrderPanelState();
+  renderOrders(getVisibleOrders());
+});
+
+orderStatusFilters.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-order-filter]");
+  if (!button) {
+    return;
+  }
+
+  activeOrderFilter = button.dataset.orderFilter;
+  updateOrderPanelState();
+  renderOrders(getVisibleOrders());
 });
 
 menuManagementList.addEventListener("click", async (event) => {

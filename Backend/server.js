@@ -12,8 +12,6 @@ const ROOT_DIR = path.join(__dirname, "..");
 const PORT = Number(process.env.PORT || 3000);
 const ADMIN_SESSION_COOKIE = "admin_session";
 const SESSION_DURATION_MS = 1000 * 60 * 60 * 8;
-const COMPLETED_ORDER_RETENTION_SECONDS = 30;
-const COMPLETED_ORDER_CLEANUP_INTERVAL_MS = 5 * 1000;
 const VALID_ORDER_STATUSES = ["Pending", "Preparing", "Ready", "Completed"];
 const VALID_USER_ROLES = ["admin", "staff", "chef"];
 const VALID_MENU_CATEGORIES = ["main-course", "snack", "beverages", "dessert"];
@@ -159,7 +157,6 @@ const ROLE_PERMISSIONS = {
   },
 };
 let databaseInitializationPromise = null;
-let lastMaintenanceRunAt = 0;
 const rateLimitState = new Map();
 
 app.set("trust proxy", true);
@@ -548,11 +545,8 @@ async function initializeDatabase() {
 
   await pool.query(
     `UPDATE orders
-     SET completed_expires_at = completed_at + ($1 * INTERVAL '1 second')
-     WHERE status = 'Completed'
-       AND completed_at IS NOT NULL
-       AND completed_expires_at IS NULL`,
-    [COMPLETED_ORDER_RETENTION_SECONDS]
+     SET completed_expires_at = NULL
+     WHERE completed_expires_at IS NOT NULL`
   );
 
   await pool.query(`
@@ -590,60 +584,9 @@ function ensureDatabaseInitialized() {
   return databaseInitializationPromise;
 }
 
-async function purgeCompletedOrders() {
-  const client = await pool.connect();
-
-  try {
-    await client.query("BEGIN");
-    const expiredOrdersResult = await client.query(
-      `SELECT order_id
-       FROM orders
-       WHERE status = 'Completed'
-         AND completed_expires_at IS NOT NULL
-         AND completed_expires_at <= NOW()`
-    );
-
-    const expiredOrderIds = expiredOrdersResult.rows.map((row) => row.order_id);
-
-    if (expiredOrderIds.length > 0) {
-      await client.query(
-        "DELETE FROM order_status_history WHERE order_id = ANY($1::text[])",
-        [expiredOrderIds]
-      );
-      await client.query(
-        "DELETE FROM orders WHERE order_id = ANY($1::text[])",
-        [expiredOrderIds]
-      );
-    }
-
-    await client.query("COMMIT");
-
-    if (expiredOrderIds.length > 0) {
-      console.log(`Purged ${expiredOrderIds.length} completed order(s) after ${COMPLETED_ORDER_RETENTION_SECONDS} seconds.`);
-    }
-  } catch (error) {
-    await client.query("ROLLBACK");
-    console.error("Failed to purge completed orders:", error);
-  } finally {
-    client.release();
-  }
-}
-
-async function runMaintenanceIfNeeded() {
-  const now = Date.now();
-
-  if (now - lastMaintenanceRunAt < COMPLETED_ORDER_CLEANUP_INTERVAL_MS) {
-    return;
-  }
-
-  lastMaintenanceRunAt = now;
-  await purgeCompletedOrders();
-}
-
 app.use(async (req, res, next) => {
   try {
     await ensureDatabaseInitialized();
-    await runMaintenanceIfNeeded();
     next();
   } catch (error) {
     console.error("Failed to initialize request context:", error);
@@ -1080,14 +1023,10 @@ app.patch("/admin/orders/:id/status", requireAdminAuth, requirePermission("updat
              WHEN $1 = 'Completed' AND status = 'Completed' THEN COALESCE(completed_at, NOW())
              ELSE NULL
            END,
-           completed_expires_at = CASE
-             WHEN $1 = 'Completed' AND status <> 'Completed' THEN NOW() + ($3 * INTERVAL '1 second')
-             WHEN $1 = 'Completed' AND status = 'Completed' THEN COALESCE(completed_expires_at, NOW() + ($3 * INTERVAL '1 second'))
-             ELSE NULL
-           END
+           completed_expires_at = NULL
        WHERE order_id = $2
        RETURNING *`,
-      [status, orderId, COMPLETED_ORDER_RETENTION_SECONDS]
+      [status, orderId]
     );
 
     await pool.query(
@@ -1195,15 +1134,6 @@ app.get("/orders/:id", createRateLimiter("orderLookup"), async (req, res) => {
 if (require.main === module) {
   ensureDatabaseInitialized()
     .then(() => {
-      purgeCompletedOrders().catch((error) => {
-        console.error("Initial completed-order purge failed:", error);
-      });
-      setInterval(() => {
-        purgeCompletedOrders().catch((error) => {
-          console.error("Scheduled completed-order purge failed:", error);
-        });
-      }, COMPLETED_ORDER_CLEANUP_INTERVAL_MS);
-
       app.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
       });

@@ -24,7 +24,8 @@ A full-stack restaurant ordering app with a customer-facing menu and a separate 
 - Add-menu flow uses a modal with a blurred backdrop instead of an always-open form
 - Large or detailed orders show a staff-follow-up notice after submission and inside the dashboard
 - Admin-only user management for staff dashboard accounts
-- Completed orders are automatically deleted after about 30 seconds for testing
+- Order management now separates the active queue from completed-order history
+- Completed orders remain available in the dashboard and can still be moved back to the active queue if they were completed by mistake
 - Basic anti-spam protection is enabled for admin login, order submission, and order lookup requests
 
 ### Data
@@ -175,7 +176,7 @@ npm run create:admin -- admin StrongPassword123 "Restaurant Admin"
 - `GET /admin/orders/:id/history`
 - `GET /admin/menu`
 - `POST /admin/menu`
-- `PATCH /admin/menu/:id/price`
+- `PATCH /admin/menu/:id`
 - `PATCH /admin/menu/:id/availability`
 - `GET /admin/users`
 - `POST /admin/users`
@@ -197,6 +198,7 @@ npm run create:admin -- admin StrongPassword123 "Restaurant Admin"
 - Menu images are referenced by asset path strings stored in the database
 - New menu items currently use an image path or URL instead of file upload storage
 - Menu categories are intentionally grouped into broader labels such as `Main Course`, `Snack`, `Beverages`, and `Dessert`
-- Completed orders are auto-purged after about 30 seconds only for testing and should be adjusted before production
+- Completed orders are retained in the database and reviewed from a dedicated completed-history view in the staff dashboard
+- The customer page includes stable automation-friendly selectors for external browser tests
 - The repository now contains Vercel deployment configuration at the repo root
 - `main` should be used for releases, while `Dev1.1` should be used for preview/testing work
