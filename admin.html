@@ -202,8 +202,12 @@
               <p id="statPreparingOrders" class="mt-3 text-3xl font-black text-orange-600">0</p>
             </article>
             <article class="admin-card rounded-2xl bg-white p-5 shadow-sm ring-1 ring-green-200">
-              <p class="text-sm font-semibold uppercase tracking-wide text-green-600">Ready / Completed</p>
-              <p id="statClosedOrders" class="mt-3 text-3xl font-black text-green-600">0</p>
+              <p class="text-sm font-semibold uppercase tracking-wide text-green-600">Ready</p>
+              <p id="statReadyOrders" class="mt-3 text-3xl font-black text-green-600">0</p>
+            </article>
+            <article class="admin-card rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-300">
+              <p class="text-sm font-semibold uppercase tracking-wide text-slate-600">Completed</p>
+              <p id="statCompletedOrders" class="mt-3 text-3xl font-black text-slate-700">0</p>
             </article>
           </div>
 
@@ -246,8 +250,37 @@
 
         <section id="adminPanelOrders" data-admin-panel="orders" class="admin-card hidden rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <div class="border-b border-slate-200 pb-5">
-            <h2 class="text-2xl font-bold">Incoming Orders</h2>
-            <p class="mt-1 text-sm text-slate-500">Update the status here so customers see the latest progress on the public page. Completed orders will auto-delete after 30 seconds for testing.</p>
+            <h2 class="text-2xl font-bold">Order Management</h2>
+            <p id="orderPanelDescription" class="mt-1 text-sm text-slate-500">Track the active queue, move orders through service statuses, and review completed orders in a separate history view.</p>
+          </div>
+
+          <div class="mt-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div id="orderViewTabs" class="flex flex-wrap gap-3">
+              <button data-order-view="active" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
+                Active Queue
+              </button>
+              <button data-order-view="completed" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                Completed History
+              </button>
+            </div>
+
+            <div id="orderStatusFilters" class="flex flex-wrap gap-2">
+              <button data-order-filter="all" class="rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:bg-orange-600">
+                All Active
+              </button>
+              <button data-order-filter="Pending" class="rounded-full border border-slate-300 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50">
+                Pending
+              </button>
+              <button data-order-filter="Preparing" class="rounded-full border border-slate-300 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50">
+                Preparing
+              </button>
+              <button data-order-filter="Ready" class="rounded-full border border-slate-300 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50">
+                Ready
+              </button>
+              <button data-order-filter="followup" class="rounded-full border border-slate-300 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50">
+                Needs Follow-Up
+              </button>
+            </div>
           </div>
 
           <div id="adminOrdersList" class="mt-6 grid gap-4"></div>
