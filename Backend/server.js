@@ -586,17 +586,16 @@ async function initializeDatabase() {
     END
   `);
 
-  const existingMenuItemsResult = await pool.query("SELECT name FROM menu_items");
-  const existingMenuNames = new Set(existingMenuItemsResult.rows.map((row) => row.name));
-
   for (const item of DEFAULT_MENU_ITEMS) {
-    if (existingMenuNames.has(item.name)) {
-      continue;
-    }
-
     await pool.query(
       `INSERT INTO menu_items (name, category, price, image, is_available)
-       VALUES ($1, $2, $3, $4, $5)`,
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (name)
+       DO UPDATE SET
+         category = EXCLUDED.category,
+         price = EXCLUDED.price,
+         image = EXCLUDED.image,
+         updated_at = NOW()`,
       [item.name, item.category, item.price, item.image, item.isAvailable]
     );
   }
