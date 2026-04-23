@@ -11,6 +11,7 @@ function getApiBaseUrl() {
 }
 
 const API_BASE_URL = getApiBaseUrl();
+const DEFAULT_FETCH_TIMEOUT_MS = 15000;
 
 function formatCurrency(value) {
   return `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
@@ -38,16 +39,34 @@ function parseOrderItems(items) {
 }
 
 async function apiFetch(path, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    credentials: "include",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-  });
+  const timeoutController = options.signal ? null : new AbortController();
+  const timeoutId = timeoutController
+    ? setTimeout(() => timeoutController.abort(), DEFAULT_FETCH_TIMEOUT_MS)
+    : null;
 
-  return response;
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      credentials: "include",
+      ...options,
+      signal: options.signal || timeoutController.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      },
+    });
+
+    return response;
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error("The request timed out. Please try again.");
+    }
+
+    throw error;
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
 }
 
 async function readJsonResponse(response) {

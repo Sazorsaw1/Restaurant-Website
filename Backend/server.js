@@ -16,6 +16,10 @@ const VALID_ORDER_STATUSES = ["Pending", "Preparing", "Ready", "Completed"];
 const VALID_USER_ROLES = ["admin", "staff", "chef"];
 const VALID_MENU_CATEGORIES = ["main-course", "snack", "beverages", "dessert"];
 const ORDER_ID_PATTERN = /^ORD-\d{6}$/;
+const DAILY_RECOMMENDATION_COUNT = 4;
+const PEOPLES_FAVORITES_COUNT = 5;
+const CHEFS_PICK_COUNT = 3;
+const STAFF_PICK_VOTE_LIMIT = 3;
 const RATE_LIMITS = {
   adminLogin: {
     windowMs: 15 * 60 * 1000,
@@ -55,7 +59,7 @@ const DEFAULT_MENU_ITEMS = [
     name: "Seafood Noodles",
     category: "main-course",
     price: 29000,
-    image: "Assets/images/Fried-Rice.jpg",
+    image: "Assets/images/Seafood Noodles.jpg",
     isAvailable: true,
   },
   {
@@ -69,7 +73,7 @@ const DEFAULT_MENU_ITEMS = [
     name: "Chicken Soup",
     category: "main-course",
     price: 22000,
-    image: "Assets/images/Fried-Rice.jpg",
+    image: "Assets/images/Chicken Soup.jpg",
     isAvailable: true,
   },
   {
@@ -90,14 +94,14 @@ const DEFAULT_MENU_ITEMS = [
     name: "Lemon Tea",
     category: "beverages",
     price: 12000,
-    image: "Assets/images/Iced-Tea.jpg",
+    image: "Assets/images/Iced Lemon Tea.jpg",
     isAvailable: true,
   },
   {
     name: "Iced Americano",
     category: "beverages",
     price: 18000,
-    image: "Assets/images/Iced-Tea.jpg",
+    image: "Assets/images/Iced Americano.jpg",
     isAvailable: true,
   },
   {
@@ -142,18 +146,21 @@ const ROLE_PERMISSIONS = {
     updateOrderStatus: true,
     updateMenuPrice: true,
     manageMenuCatalog: true,
+    voteStaffPicks: true,
   },
   staff: {
     manageUsers: false,
     updateOrderStatus: true,
     updateMenuPrice: false,
     manageMenuCatalog: false,
+    voteStaffPicks: true,
   },
   chef: {
     manageUsers: false,
     updateOrderStatus: true,
     updateMenuPrice: true,
     manageMenuCatalog: true,
+    voteStaffPicks: true,
   },
 };
 let databaseInitializationPromise = null;
@@ -233,6 +240,14 @@ function serializeMenuItem(row) {
     isAvailable: row.is_available,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function serializeHighlightedMenuItem(row) {
+  return {
+    ...serializeMenuItem(row),
+    voteCount: Number(row.vote_count || row.voteCount || 0),
+    orderedQuantity: Number(row.ordered_quantity || row.orderedQuantity || 0),
   };
 }
 
@@ -527,6 +542,17 @@ async function initializeDatabase() {
       created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS staff_menu_votes (
+      id BIGSERIAL PRIMARY KEY,
+      admin_user_id BIGINT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+      menu_item_id BIGINT NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
+      created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW(),
+      UNIQUE (admin_user_id, menu_item_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_staff_menu_votes_user_id ON staff_menu_votes(admin_user_id);
+    CREATE INDEX IF NOT EXISTS idx_staff_menu_votes_menu_item_id ON staff_menu_votes(menu_item_id);
   `);
 
   await pool.query(`
@@ -584,6 +610,128 @@ function ensureDatabaseInitialized() {
   return databaseInitializationPromise;
 }
 
+function getJakartaDateKey(date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function getDeterministicMenuScore(dateKey, item) {
+  return crypto
+    .createHash("sha256")
+    .update(`${dateKey}:${item.id}:${item.name}`)
+    .digest("hex");
+}
+
+async function getActiveMenuItems() {
+  const result = await pool.query(
+    `SELECT *
+     FROM menu_items
+     WHERE is_available = TRUE
+     ORDER BY category ASC, name ASC`
+  );
+
+  return result.rows.map(serializeMenuItem);
+}
+
+function getDailyRecommendations(items, count = DAILY_RECOMMENDATION_COUNT) {
+  const dateKey = getJakartaDateKey();
+
+  return [...items]
+    .sort((left, right) => getDeterministicMenuScore(dateKey, left).localeCompare(getDeterministicMenuScore(dateKey, right)))
+    .slice(0, count);
+}
+
+async function getPeopleFavorites(limit = PEOPLES_FAVORITES_COUNT, completedOnly = true) {
+  const result = await pool.query(
+    `SELECT
+        menu_items.*,
+        SUM((order_items.item ->> 'quantity')::int)::int AS ordered_quantity
+     FROM orders
+     CROSS JOIN LATERAL jsonb_array_elements(orders.items::jsonb) AS order_items(item)
+     JOIN menu_items ON menu_items.name = order_items.item ->> 'name'
+     WHERE menu_items.is_available = TRUE
+       AND ($1::boolean = FALSE OR orders.status = 'Completed')
+     GROUP BY menu_items.id
+     ORDER BY ordered_quantity DESC, menu_items.name ASC
+     LIMIT $2`,
+    [completedOnly, limit]
+  );
+
+  return result.rows.map(serializeHighlightedMenuItem);
+}
+
+async function getChefsPick(limit = CHEFS_PICK_COUNT) {
+  const result = await pool.query(
+    `SELECT
+        menu_items.*,
+        COUNT(staff_menu_votes.id)::int AS vote_count
+     FROM menu_items
+     JOIN staff_menu_votes ON staff_menu_votes.menu_item_id = menu_items.id
+     WHERE menu_items.is_available = TRUE
+     GROUP BY menu_items.id
+     ORDER BY vote_count DESC, menu_items.name ASC
+     LIMIT $1`,
+    [limit]
+  );
+
+  return result.rows.map(serializeHighlightedMenuItem);
+}
+
+async function getMenuHighlights() {
+  const activeMenuItems = await getActiveMenuItems();
+  const todaysRecommendation = getDailyRecommendations(activeMenuItems);
+  let peoplesFavorites = await getPeopleFavorites(PEOPLES_FAVORITES_COUNT, true);
+
+  if (peoplesFavorites.length === 0) {
+    peoplesFavorites = await getPeopleFavorites(PEOPLES_FAVORITES_COUNT, false);
+  }
+
+  const chefsPick = await getChefsPick(CHEFS_PICK_COUNT);
+
+  return {
+    todaysRecommendation,
+    peoplesFavorites,
+    chefsPick,
+    chefsPickIds: chefsPick.map((item) => item.id),
+  };
+}
+
+async function getStaffPickVotingData(adminUserId) {
+  const [voteSummaryResult, currentUserVoteCountResult] = await Promise.all([
+    pool.query(
+      `SELECT
+          menu_items.*,
+          COUNT(staff_menu_votes.id)::int AS vote_count,
+          BOOL_OR(staff_menu_votes.admin_user_id = $1) AS voted_by_current_user
+       FROM menu_items
+       LEFT JOIN staff_menu_votes ON staff_menu_votes.menu_item_id = menu_items.id
+       WHERE menu_items.is_available = TRUE
+       GROUP BY menu_items.id
+       ORDER BY vote_count DESC, menu_items.name ASC`,
+      [adminUserId]
+    ),
+    pool.query(
+      `SELECT COUNT(*)::int AS count
+       FROM staff_menu_votes
+       WHERE admin_user_id = $1`,
+      [adminUserId]
+    ),
+  ]);
+
+  return {
+    voteLimit: STAFF_PICK_VOTE_LIMIT,
+    currentUserVoteCount: currentUserVoteCountResult.rows[0]?.count || 0,
+    items: voteSummaryResult.rows.map((row) => ({
+      ...serializeHighlightedMenuItem(row),
+      votedByCurrentUser: Boolean(row.voted_by_current_user),
+    })),
+  };
+}
+
 app.use(async (req, res, next) => {
   try {
     await ensureDatabaseInitialized();
@@ -620,6 +768,16 @@ app.get("/menu", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Failed to load menu." });
+  }
+});
+
+app.get("/menu/highlights", async (req, res) => {
+  try {
+    const highlights = await getMenuHighlights();
+    res.json(highlights);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to load menu highlights." });
   }
 });
 
@@ -897,6 +1055,96 @@ app.get("/admin/menu", requireAdminAuth, requirePermission("manageMenuCatalog"),
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Failed to fetch menu." });
+  }
+});
+
+app.get("/admin/staff-picks", requireAdminAuth, requirePermission("voteStaffPicks"), async (req, res) => {
+  try {
+    const data = await getStaffPickVotingData(req.adminSession.admin_user_id);
+    res.json(data);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to load staff pick voting." });
+  }
+});
+
+app.post("/admin/staff-picks/:id", requireAdminAuth, requirePermission("voteStaffPicks"), async (req, res) => {
+  try {
+    const menuItemId = Number(req.params.id);
+
+    if (!Number.isInteger(menuItemId) || menuItemId < 1) {
+      return res.status(400).json({ message: "Invalid menu item id." });
+    }
+
+    const menuItemResult = await pool.query(
+      `SELECT id
+       FROM menu_items
+       WHERE id = $1 AND is_available = TRUE`,
+      [menuItemId]
+    );
+
+    if (menuItemResult.rows.length === 0) {
+      return res.status(404).json({ message: "Menu item not found." });
+    }
+
+    const existingVoteResult = await pool.query(
+      `SELECT id
+       FROM staff_menu_votes
+       WHERE admin_user_id = $1 AND menu_item_id = $2`,
+      [req.adminSession.admin_user_id, menuItemId]
+    );
+
+    if (existingVoteResult.rows.length > 0) {
+      return res.status(409).json({ message: "You have already voted for this menu item." });
+    }
+
+    const voteCountResult = await pool.query(
+      `SELECT COUNT(*)::int AS count
+       FROM staff_menu_votes
+       WHERE admin_user_id = $1`,
+      [req.adminSession.admin_user_id]
+    );
+
+    const currentVoteCount = voteCountResult.rows[0]?.count || 0;
+    if (currentVoteCount >= STAFF_PICK_VOTE_LIMIT) {
+      return res.status(400).json({ message: `You can only keep ${STAFF_PICK_VOTE_LIMIT} active Chef's Pick votes.` });
+    }
+
+    await pool.query(
+      `INSERT INTO staff_menu_votes (admin_user_id, menu_item_id)
+       VALUES ($1, $2)`,
+      [req.adminSession.admin_user_id, menuItemId]
+    );
+
+    res.status(201).json(await getStaffPickVotingData(req.adminSession.admin_user_id));
+  } catch (error) {
+    console.error(error);
+    if (String(error.message).includes("duplicate key")) {
+      return res.status(409).json({ message: "You have already voted for this menu item." });
+    }
+
+    res.status(500).json({ message: "Failed to add vote." });
+  }
+});
+
+app.delete("/admin/staff-picks/:id", requireAdminAuth, requirePermission("voteStaffPicks"), async (req, res) => {
+  try {
+    const menuItemId = Number(req.params.id);
+
+    if (!Number.isInteger(menuItemId) || menuItemId < 1) {
+      return res.status(400).json({ message: "Invalid menu item id." });
+    }
+
+    await pool.query(
+      `DELETE FROM staff_menu_votes
+       WHERE admin_user_id = $1 AND menu_item_id = $2`,
+      [req.adminSession.admin_user_id, menuItemId]
+    );
+
+    res.json(await getStaffPickVotingData(req.adminSession.admin_user_id));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to remove vote." });
   }
 });
 

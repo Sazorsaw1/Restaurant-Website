@@ -4,8 +4,10 @@ const orderItemsContainer = document.getElementById("orderItems");
 const totalPriceEl = document.getElementById("totalPrice");
 const tableNumberSelect = document.getElementById("tableNumber");
 const submitOrderButton = document.getElementById("submitOrder");
+const orderFormMessage = document.getElementById("orderFormMessage");
 const generatedOrderIdEl = document.getElementById("generatedOrderId");
 const copyBtn = document.getElementById("copyOrderId");
+const copyOrderStatus = document.getElementById("copyOrderStatus");
 const largeOrderNotice = document.getElementById("largeOrderNotice");
 
 let orderState = {};
@@ -32,6 +34,26 @@ function createInitialOrderState() {
 
     return state;
   }, {});
+}
+
+function showOrderFormMessage(message, isError = true) {
+  orderFormMessage.textContent = message;
+  orderFormMessage.className = `mb-4 rounded-xl border px-4 py-3 text-sm ${isError ? "border-red-300 bg-red-50 text-red-600" : "border-green-300 bg-green-50 text-green-700"}`;
+}
+
+function clearOrderFormMessage() {
+  orderFormMessage.textContent = "";
+  orderFormMessage.className = "mb-4 hidden rounded-xl border px-4 py-3 text-sm";
+}
+
+function showCopyOrderStatus(message, isError = false) {
+  copyOrderStatus.textContent = message;
+  copyOrderStatus.className = `mb-4 rounded-xl border px-4 py-3 text-sm ${isError ? "border-red-300 bg-red-50 text-red-600" : "border-green-300 bg-green-50 text-green-700"}`;
+}
+
+function clearCopyOrderStatus() {
+  copyOrderStatus.textContent = "";
+  copyOrderStatus.className = "mb-4 hidden rounded-xl border px-4 py-3 text-sm";
 }
 
 function renderOrderItems() {
@@ -101,6 +123,7 @@ function resetOrderForm() {
   orderState = createInitialOrderState();
   renderOrderItems();
   updateTotal();
+  clearOrderFormMessage();
 }
 
 async function openOrderModal() {
@@ -120,6 +143,7 @@ function openSuccessModal(orderId, shouldShowLargeOrderNotice = false) {
   generatedOrderIdEl.textContent = orderId;
   successModal.dataset.orderId = orderId;
   largeOrderNotice.classList.toggle("hidden", !shouldShowLargeOrderNotice);
+  clearCopyOrderStatus();
   toggleModal(successModal, true);
 }
 
@@ -186,16 +210,17 @@ successModal.addEventListener("click", (event) => {
 
 submitOrderButton.addEventListener("click", async () => {
   const tableNumber = tableNumberSelect.value;
+  clearOrderFormMessage();
 
   if (!tableNumber) {
-    alert("Please select a table number.");
+    showOrderFormMessage("Please select a table number.");
     return;
   }
 
   const selectedItems = Object.values(orderState).filter((item) => item.selected);
 
   if (selectedItems.length === 0) {
-    alert("Please select at least one menu item.");
+    showOrderFormMessage("Please select at least one menu item.");
     return;
   }
 
@@ -226,16 +251,17 @@ submitOrderButton.addEventListener("click", async () => {
       method: "POST",
       body: JSON.stringify(orderData),
     });
+    const data = await readJsonResponse(response);
 
     if (!response.ok) {
-      throw new Error("Failed to create order.");
+      throw new Error(data?.message || "Failed to create order.");
     }
 
     closeOrderModal();
     openSuccessModal(orderId, requiresStaffFollowup);
   } catch (error) {
     console.error(error);
-    alert("The order could not be submitted. Please make sure the backend server is running and try again.");
+    showOrderFormMessage(error.message || "The order could not be submitted. Please try again.");
   } finally {
     submitOrderButton.disabled = false;
     submitOrderButton.textContent = "Submit Order";
@@ -248,12 +274,13 @@ copyBtn.addEventListener("click", async () => {
   try {
     await navigator.clipboard.writeText(cleanId);
     copyBtn.textContent = "Copied!";
+    showCopyOrderStatus("Order ID copied. You can paste the numeric part into Check Order.");
     setTimeout(() => {
       copyBtn.textContent = "Copy";
     }, 1500);
   } catch (error) {
     console.error(error);
-    alert("Copy failed. Please copy the order ID manually.");
+    showCopyOrderStatus("Copy failed. Please copy the order ID manually.", true);
   }
 });
 

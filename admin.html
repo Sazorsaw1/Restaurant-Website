@@ -141,6 +141,9 @@
             <button data-admin-panel-trigger="orders" class="admin-panel-trigger rounded-2xl bg-white/15 px-4 py-3 text-left font-medium text-white transition hover:bg-white/20">
               Order
             </button>
+            <button id="votesPanelTrigger" data-admin-panel-trigger="votes" class="admin-panel-trigger rounded-2xl border border-white/15 px-4 py-3 text-left font-medium text-slate-200 transition hover:bg-white/10">
+              Vote Picks
+            </button>
             <button id="menuPanelTrigger" data-admin-panel-trigger="menu" class="admin-panel-trigger hidden rounded-2xl border border-white/15 px-4 py-3 text-left font-medium text-slate-200 transition hover:bg-white/10">
               Manage Menu
             </button>
@@ -166,6 +169,10 @@
             <div class="admin-soft-card rounded-2xl bg-slate-50 p-4">
               <p class="font-semibold text-slate-900">Order</p>
               <p class="mt-1">All roles can update customer order progress and spot large-order follow-up notices.</p>
+            </div>
+            <div class="admin-soft-card rounded-2xl bg-slate-50 p-4">
+              <p class="font-semibold text-slate-900">Vote Picks</p>
+              <p class="mt-1">All staff roles can vote for up to three menu items to shape the Chef’s Pick section on the customer homepage.</p>
             </div>
             <div class="admin-soft-card rounded-2xl bg-slate-50 p-4">
               <p class="font-semibold text-slate-900">Manage Menu</p>
@@ -233,15 +240,15 @@
               <div class="mt-4 grid gap-3">
                 <div class="rounded-2xl bg-white/10 p-4">
                   <p class="font-semibold">Admin</p>
-                  <p class="mt-1 text-sm text-slate-200">Orders, menu management, and user management.</p>
+                  <p class="mt-1 text-sm text-slate-200">Orders, staff-pick voting, menu management, and user management.</p>
                 </div>
                 <div class="rounded-2xl bg-white/10 p-4">
                   <p class="font-semibold">Chef</p>
-                  <p class="mt-1 text-sm text-slate-200">Orders plus menu updates, add, archive, and restore.</p>
+                  <p class="mt-1 text-sm text-slate-200">Orders, staff-pick voting, and menu updates including add, archive, and restore.</p>
                 </div>
                 <div class="rounded-2xl bg-white/10 p-4">
                   <p class="font-semibold">Staff</p>
-                  <p class="mt-1 text-sm text-slate-200">Orders only, with no access to menu or user controls.</p>
+                  <p class="mt-1 text-sm text-slate-200">Orders plus staff-pick voting, with no access to menu or user controls.</p>
                 </div>
               </div>
             </article>
@@ -284,6 +291,16 @@
           </div>
 
           <div id="adminOrdersList" class="mt-6 grid gap-4"></div>
+        </section>
+
+        <section id="adminPanelVotes" data-admin-panel="votes" class="admin-card hidden rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <div class="border-b border-slate-200 pb-5">
+            <h2 class="text-2xl font-bold">Chef's Pick Voting</h2>
+            <p id="staffPickVotingHint" class="mt-1 text-sm text-slate-500">Each staff account can keep up to three active votes. The three menu items with the most votes will be marked as Chef's Pick on the customer homepage.</p>
+          </div>
+
+          <div id="staffPickSummary" class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4"></div>
+          <div id="staffPickVotingList" class="mt-6 grid gap-3"></div>
         </section>
 
         <section id="adminPanelMenu" data-admin-panel="menu" class="admin-card hidden rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
