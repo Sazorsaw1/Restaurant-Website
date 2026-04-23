@@ -28,11 +28,23 @@ const openCheckBtn = document.getElementById("openCheckModal");
 const cancelCheckBtn = document.getElementById("cancelCheckOrder");
 const checkOrderBtn = document.getElementById("checkOrderBtn");
 const orderIdInput = document.getElementById("orderIdInput");
+const checkOrderMessage = document.getElementById("checkOrderMessage");
 const orderResult = document.getElementById("orderResult");
+
+function showCheckOrderMessage(message, isError = true) {
+  checkOrderMessage.textContent = message;
+  checkOrderMessage.className = `mb-4 rounded-xl border px-4 py-3 text-sm ${isError ? "border-red-300 bg-red-50 text-red-600" : "border-green-300 bg-green-50 text-green-700"}`;
+}
+
+function clearCheckOrderMessage() {
+  checkOrderMessage.textContent = "";
+  checkOrderMessage.className = "mb-4 hidden rounded-xl border px-4 py-3 text-sm";
+}
 
 function resetCheckOrderState() {
   orderIdInput.value = "";
   orderResult.innerHTML = "";
+  clearCheckOrderMessage();
 }
 
 function openCheckModal() {
@@ -55,14 +67,15 @@ checkModal.addEventListener("click", (e) => {
 
 async function handleCheckOrder() {
   const input = orderIdInput.value.trim();
+  clearCheckOrderMessage();
 
   if (!input) {
-    alert("Please enter an Order ID");
+    showCheckOrderMessage("Please enter an Order ID.");
     return;
   }
 
   if (!/^\d{6}$/.test(input)) {
-    alert("Please enter the 6-digit number from your Order ID.");
+    showCheckOrderMessage("Please enter the 6-digit number from your Order ID.");
     return;
   }
 
@@ -75,13 +88,14 @@ async function handleCheckOrder() {
     const response = await apiFetch(`/orders/${orderId}`, {
       method: "GET",
     });
+    const data = await readJsonResponse(response);
 
     if (!response.ok) {
-      orderResult.innerHTML = `<p data-testid="order-result-not-found" class="text-red-500">Order not found.</p>`;
+      orderResult.innerHTML = `<p data-testid="order-result-not-found" class="text-red-500">${data?.message || "Order not found."}</p>`;
       return;
     }
 
-    const order = await response.json();
+    const order = data;
     const items = parseOrderItems(order.items);
     const totalPrice = Number(order.total_price ?? order.totalPrice ?? 0);
 
@@ -125,7 +139,7 @@ async function handleCheckOrder() {
     `;
   } catch (error) {
     console.error(error);
-    orderResult.innerHTML = `<p data-testid="order-result-backend-error" class="text-red-500">Unable to reach the backend. Please try again.</p>`;
+    orderResult.innerHTML = `<p data-testid="order-result-backend-error" class="text-red-500">${error.message || "Unable to reach the backend. Please try again."}</p>`;
   } finally {
     checkOrderBtn.disabled = false;
     checkOrderBtn.textContent = "Check";

@@ -1,13 +1,13 @@
 const LOCAL_MENU_FALLBACK = [
   { name: "Fried Rice", price: 25000, category: "main-course", image: "Assets/images/Fried-Rice.jpg" },
   { name: "Chicken Satay", price: 30000, category: "main-course", image: "Assets/images/Satay.jpg" },
-  { name: "Seafood Noodles", price: 29000, category: "main-course", image: "Assets/images/Fried-Rice.jpg" },
+  { name: "Seafood Noodles", price: 29000, category: "main-course", image: "Assets/images/Seafood Noodles.jpg" },
   { name: "Grilled Gourami", price: 48000, category: "main-course", image: "Assets/images/Grilled Gourami.png" },
-  { name: "Chicken Soup", price: 22000, category: "main-course", image: "Assets/images/Fried-Rice.jpg" },
+  { name: "Chicken Soup", price: 22000, category: "main-course", image: "Assets/images/Chicken Soup.jpg" },
   { name: "Fried Tofu", price: 17000, category: "snack", image: "Assets/images/Fried Tofu.jpg" },
   { name: "Iced Tea", price: 10000, category: "beverages", image: "Assets/images/Iced-Tea.jpg" },
-  { name: "Lemon Tea", price: 12000, category: "beverages", image: "Assets/images/Iced-Tea.jpg" },
-  { name: "Iced Americano", price: 18000, category: "beverages", image: "Assets/images/Iced-Tea.jpg" },
+  { name: "Lemon Tea", price: 12000, category: "beverages", image: "Assets/images/Iced Lemon Tea.jpg" },
+  { name: "Iced Americano", price: 18000, category: "beverages", image: "Assets/images/Iced Americano.jpg" },
   { name: "Avocado Juice", price: 19000, category: "beverages", image: "Assets/images/Avocado Juice.jpg" },
   { name: "Lychee Cooler", price: 17000, category: "beverages", image: "Assets/images/Iced-Tea.jpg" },
   { name: "Chocolate Cake", price: 20000, category: "dessert", image: "Assets/images/cake.jpg" },
@@ -84,6 +84,8 @@ function createMenuCard(item, options = {}) {
           src="${item.image}"
           alt="${item.name}"
           data-testid="menu-image-${slug}"
+          loading="lazy"
+          decoding="async"
           class="h-48 w-full object-cover"
         >
         ${options.topLabel ? `

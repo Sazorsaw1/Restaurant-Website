@@ -59,7 +59,7 @@ const DEFAULT_MENU_ITEMS = [
     name: "Seafood Noodles",
     category: "main-course",
     price: 29000,
-    image: "Assets/images/Fried-Rice.jpg",
+    image: "Assets/images/Seafood Noodles.jpg",
     isAvailable: true,
   },
   {
@@ -73,7 +73,7 @@ const DEFAULT_MENU_ITEMS = [
     name: "Chicken Soup",
     category: "main-course",
     price: 22000,
-    image: "Assets/images/Fried-Rice.jpg",
+    image: "Assets/images/Chicken Soup.jpg",
     isAvailable: true,
   },
   {
@@ -94,14 +94,14 @@ const DEFAULT_MENU_ITEMS = [
     name: "Lemon Tea",
     category: "beverages",
     price: 12000,
-    image: "Assets/images/Iced-Tea.jpg",
+    image: "Assets/images/Iced Lemon Tea.jpg",
     isAvailable: true,
   },
   {
     name: "Iced Americano",
     category: "beverages",
     price: 18000,
-    image: "Assets/images/Iced-Tea.jpg",
+    image: "Assets/images/Iced Americano.jpg",
     isAvailable: true,
   },
   {

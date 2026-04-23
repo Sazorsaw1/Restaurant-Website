@@ -149,6 +149,8 @@
         <span class="text-lg font-bold text-orange-600">Rp <span id="totalPrice" data-testid="order-total-price">0</span></span>
       </div>
 
+      <div id="orderFormMessage" data-testid="order-form-message" class="mb-4 hidden rounded-xl border px-4 py-3 text-sm"></div>
+
       <div class="flex justify-end gap-3">
         <button id="cancelOrder" name="cancel-order" data-testid="cancel-order-button" class="rounded-lg border border-slate-300 px-4 py-2 font-medium text-slate-700 transition hover:bg-slate-50">
           Cancel
@@ -194,6 +196,7 @@
         </button>
       </div>
 
+      <div id="checkOrderMessage" data-testid="check-order-message" class="mb-4 hidden rounded-xl border px-4 py-3 text-sm"></div>
       <div id="orderResult" data-testid="order-result" class="min-h-12 border-t border-slate-200 pt-4 text-sm"></div>
     </div>
   </div>
@@ -213,6 +216,7 @@
           Copy
         </button>
       </div>
+      <div id="copyOrderStatus" data-testid="copy-order-status" class="mb-4 hidden rounded-xl border px-4 py-3 text-sm"></div>
 
       <button id="closeSuccessModal" name="close-success-modal" data-testid="close-success-modal-button" class="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-600">
         OK

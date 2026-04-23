@@ -277,7 +277,7 @@ function renderStaffPickVoting(data) {
     <article class="admin-card rounded-2xl border border-slate-200 p-4 shadow-sm">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div class="flex items-center gap-4">
-          <img src="${item.image}" alt="${item.name}" class="h-16 w-16 rounded-2xl object-cover">
+          <img src="${item.image}" alt="${item.name}" loading="lazy" decoding="async" class="h-16 w-16 rounded-2xl object-cover">
           <div>
             <div class="flex flex-wrap items-center gap-2">
               <p class="font-semibold text-slate-900">${item.name}</p>
@@ -453,7 +453,7 @@ function renderMenuItems(items) {
     <article class="admin-card rounded-2xl border border-slate-200 p-4 shadow-sm">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div class="flex items-center gap-4">
-          <img src="${item.image}" alt="${item.name}" class="h-16 w-16 rounded-2xl object-cover">
+          <img src="${item.image}" alt="${item.name}" loading="lazy" decoding="async" class="h-16 w-16 rounded-2xl object-cover">
           <div>
             <div class="flex flex-wrap items-center gap-2">
               <p class="font-semibold text-slate-900">${item.name}</p>
