@@ -6,6 +6,10 @@ A full-stack restaurant ordering app with a customer-facing menu and a separate 
 
 ### Customer App
 - Browse menu items on the homepage
+- Homepage spotlight sections for:
+  - daily recommendations
+  - people favorites
+  - Chef's Pick
 - Search and filter by category
 - Create an order from a modal
 - Supports table selection from `Table 1` through `Table 10`
@@ -16,7 +20,8 @@ A full-stack restaurant ordering app with a customer-facing menu and a separate 
 - Separate login page for staff
 - Role-based access for `admin`, `staff`, and `chef`
 - Update customer order statuses
-- Sidebar-based admin navigation for orders, menu management, and user management
+- Sidebar-based admin navigation for orders, staff voting, menu management, and user management
+- All staff roles can vote for Chef's Pick items from the admin dashboard
 - Menu pricing and catalog controls are grouped inside `Manage Menu`
 - Chef and admin can add menu items with an image path or URL
 - Chef and admin can change a menu item's category and price from the management list
@@ -33,6 +38,7 @@ A full-stack restaurant ordering app with a customer-facing menu and a separate 
 - Staff accounts and sessions are stored in Neon Postgres
 - Menu items are served from the database
 - Customer menu also has a local fallback list so the UI can still render if the backend menu call fails
+- Homepage highlight sections are derived from live menu data, order history, and staff votes
 
 ### Deployment
 - Vercel is configured for Git-based deployments
@@ -157,12 +163,15 @@ npm run create:admin -- admin StrongPassword123 "Restaurant Admin"
 
 - `admin`: can create users, remove users, change another user's role, update order statuses, change prices, and manage the menu catalog
 - `staff`: can update order statuses
-- `chef`: can update order statuses, change prices, and add, archive, or restore menu items
+- `chef`: can update order statuses, vote for Chef's Pick, change prices, and add, archive, or restore menu items
+- `admin`: can also vote for Chef's Pick
+- `staff`: can also vote for Chef's Pick
 
 ## API Overview
 
 ### Public
 - `GET /menu`
+- `GET /menu/highlights`
 - `POST /orders`
 - `GET /orders/:id`
 
@@ -174,6 +183,9 @@ npm run create:admin -- admin StrongPassword123 "Restaurant Admin"
 - `GET /admin/orders`
 - `PATCH /admin/orders/:id/status`
 - `GET /admin/orders/:id/history`
+- `GET /admin/staff-picks`
+- `POST /admin/staff-picks/:id`
+- `DELETE /admin/staff-picks/:id`
 - `GET /admin/menu`
 - `POST /admin/menu`
 - `PATCH /admin/menu/:id`
@@ -199,6 +211,9 @@ npm run create:admin -- admin StrongPassword123 "Restaurant Admin"
 - New menu items currently use an image path or URL instead of file upload storage
 - Menu categories are intentionally grouped into broader labels such as `Main Course`, `Snack`, `Beverages`, and `Dessert`
 - Completed orders are retained in the database and reviewed from a dedicated completed-history view in the staff dashboard
+- Today's Recommendation is generated once per day from the active menu for all users
+- People Favorites are based on the most-ordered active menu items
+- Chef's Pick is determined by staff voting, with each staff account limited to three active votes
 - The customer page includes stable automation-friendly selectors for external browser tests
 - The repository now contains Vercel deployment configuration at the repo root
 - `main` should be used for releases, while `Dev1.1` should be used for preview/testing work

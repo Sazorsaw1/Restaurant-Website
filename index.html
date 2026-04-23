@@ -44,6 +44,39 @@
       </p>
     </section>
 
+    <section class="mb-8 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-amber-100">
+      <div class="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-orange-500">Daily Spotlight</p>
+          <h2 class="mt-2 text-2xl font-bold text-slate-900">Today's Recommendation</h2>
+          <p class="mt-2 text-sm text-slate-500">Four menu ideas that refresh once per day for everyone.</p>
+        </div>
+      </div>
+      <div id="todaysRecommendationContainer" data-testid="todays-recommendation-container" class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4"></div>
+    </section>
+
+    <section class="mb-8 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-amber-100">
+      <div class="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-orange-500">Popular Right Now</p>
+          <h2 class="mt-2 text-2xl font-bold text-slate-900">People Favorites</h2>
+          <p class="mt-2 text-sm text-slate-500">The five menu items customers choose the most.</p>
+        </div>
+      </div>
+      <div id="peoplesFavoritesContainer" data-testid="peoples-favorites-container" class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-5"></div>
+    </section>
+
+    <section class="mb-8 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-amber-100">
+      <div class="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-orange-500">Staff-Curated</p>
+          <h2 class="mt-2 text-2xl font-bold text-slate-900">Chef's Pick</h2>
+          <p class="mt-2 text-sm text-slate-500">The top three staff-voted dishes and drinks from the team behind the service line.</p>
+        </div>
+      </div>
+      <div id="chefsPickContainer" data-testid="chefs-pick-container" class="grid grid-cols-1 gap-6 md:grid-cols-3"></div>
+    </section>
+
     <section class="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-amber-100">
       <div class="flex flex-col gap-3 md:flex-row">
         <input
@@ -69,6 +102,10 @@
     </section>
 
     <section>
+      <div class="mb-4">
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-orange-500">Full Menu</p>
+        <h2 class="mt-2 text-2xl font-bold text-slate-900">Browse Everything</h2>
+      </div>
       <div id="menuContainer" data-testid="menu-container" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
     </section>
   </main>
